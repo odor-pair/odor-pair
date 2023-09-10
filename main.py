@@ -13,7 +13,7 @@ import aqsol
 
 torch.manual_seed(42)
 
-data = aqsol.AQSOL()
+data = aqsol.data.Dataset()
 
 train_size = int(0.8 * len(data))
 test_size = len(data) - train_size

@@ -69,7 +69,7 @@ print(f'Found {len(all_material_urls)} to crawl.')
 
 for res in tqdm.tqdm(all_material_urls):
     # So as to not kill the website
-    time.sleep(.1)
+    time.sleep(.01)
     url = get_onclick_url(res)
     try:
         data = get_data(url)
