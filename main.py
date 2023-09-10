@@ -2,24 +2,23 @@ from rdkit import Chem
 from rdkit.Chem.Draw import MolToImage
 import pandas as pd
 import torch
-from torch_geometric.datasets import MoleculeNet, AQSOL
 from torch.utils.tensorboard import SummaryWriter
-
+from ogb.graphproppred import PygGraphPropPredDataset
+from ogb.utils import smiles2graph
 import torch
 import torch_geometric as pyg
 import tqdm
 
+import aqsol
 
-# The dataset only has a single feature, which is the type of the heavy atom
-# You can convert by indexing into data.atoms()
-# Not super transferrable. We'd be better of using the set of 9 features from
-# https://ogb.stanford.edu/docs/graphprop/
-data = AQSOL(".")
-test = AQSOL(".",split="test")
-
-# molecule = Chem.MolFromSmiles(data[0]["smiles"])
-# MolToImage(molecule).show()
 torch.manual_seed(42)
+
+data = aqsol.AQSOL()
+
+train_size = int(0.8 * len(data))
+test_size = len(data) - train_size
+train, test = torch.utils.data.random_split(data, [train_size, test_size])
+
 
 embedding_size = 32
 
@@ -29,20 +28,21 @@ class GCN(torch.nn.Module):
         # Init parent
         super(GCN, self).__init__()
 
-        num_layers = 1
-        self.input_dim = len(data.atoms())
+        self.input_dim = data.num_features
         
         self.layer = pyg.nn.GCNConv(self.input_dim, embedding_size)
+        self.layer2 = pyg.nn.GCNConv(embedding_size, embedding_size)
 
-        self.out = torch.nn.Linear(embedding_size,1)
+        self.out = torch.nn.Linear(2*embedding_size,1)
 
     def forward(self, x, edge_index, batch_index):
-        x = torch.nn.functional.one_hot(x.long(), self.input_dim).float()
-
         x = self.layer(x,edge_index)
         x = torch.nn.functional.tanh(x)
 
-        pooled = pyg.nn.pool.global_add_pool(x,batch_index)
+        # x = self.layer2(x,edge_index)
+        # x = torch.nn.functional.tanh(x)
+
+        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch_index),pyg.nn.pool.global_mean_pool(x,batch_index)], dim=1)
         return self.out(pooled)
 
 
@@ -50,10 +50,11 @@ model = GCN()
 loss_fn = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 
-loader = pyg.loader.DataLoader(data,batch_size=32)
+train_loader = pyg.loader.DataLoader(train,batch_size=32)
+test_loader = pyg.loader.DataLoader(test,batch_size=32)
 
-def do_train_step():
-    for batch in loader:
+def do_train_epoch():
+    for batch in train_loader:
         optimizer.zero_grad()
         
         pred = model(batch.x.float(),batch.edge_index,batch.batch)
@@ -65,7 +66,6 @@ def do_train_step():
 
     return loss
 
-test_loader = pyg.loader.DataLoader(test,batch_size=32)
 
 def get_test_loss():
     for batch in test_loader:
@@ -76,9 +76,9 @@ def get_test_loss():
 
     return loss
 
-writer = SummaryWriter()
-for i in tqdm.tqdm(range(100)):
-    loss = do_train_step()
+writer = SummaryWriter(comment="_one layer using mean+add pool")
+for i in tqdm.tqdm(range(25)):
+    loss = do_train_epoch()
     tl = get_test_loss()
     writer.add_scalars('Loss',{'train':loss,'test': tl},i)
 
