@@ -13,40 +13,53 @@ import tqdm
 from pairing.data import PairData
 import pairing.data
 
+import scipy
+import scipy.stats
+
 torch.manual_seed(42)
 
 auroc = torchmetrics.classification.MultilabelAUROC(pairing.data.Dataset.num_classes())
 
 data = pairing.data.Dataset()
 
-train_size = int(0.8 * len(data))
+train_size = int(0.9 * len(data))
 test_size = len(data) - train_size
 train, test = torch.utils.data.random_split(data, [train_size, test_size])
+print(f"Training datapoints = {train_size}. Test datapoints = {test_size}.")
 
 
 class GCN(torch.nn.Module):
-    embedding_size = 32
-
-    def __init__(self):
+    def __init__(self,num_layers,embedding_size):
         super(GCN, self).__init__()
 
-        self.input_dim = data.num_features
-        
-        self.layer = pyg.nn.GCNConv(self.input_dim, GCN.embedding_size)
+        self.layers = []
+        self.task = "graph"
+        self.layers.append(self.build_conv_model(pairing.data.Dataset.num_features(), embedding_size))
+        while len(self.layers) < num_layers:
+            self.layers.append(self.build_conv_model(embedding_size, embedding_size))
+
+    def build_conv_model(self, input_dim, hidden_dim):
+        # refer to pytorch geometric nn module for different implementation of GNNs.
+        if self.task == 'node':
+            return pyg.nn.GCNConv(input_dim, hidden_dim)
+        else:
+            return pyg.nn.GINConv(torch.nn.Sequential(torch.nn.Linear(input_dim, hidden_dim),
+                                  torch.nn.ReLU(), torch.nn.Linear(hidden_dim, hidden_dim)))
 
     def forward(self, x, edge_index, batch_index):
-        x = self.layer(x,edge_index)
-        x = torch.nn.functional.tanh(x)
+        for layer in self.layers:
+            x = layer(x,edge_index)
+            x = torch.nn.functional.tanh(x)
 
         pooled = pyg.nn.pool.global_mean_pool(x,batch_index)
-        return torch.nn.functional.tanh(pooled)
+        return pooled
 
 class MixturePredictor(torch.nn.Module):
-    def __init__(self):
+    def __init__(self,num_layers,embedding_size):
         super(MixturePredictor,self).__init__()
 
-        self.gcn = GCN()
-        self.out = torch.nn.Linear(2*GCN.embedding_size,pairing.data.Dataset.num_classes())
+        self.gcn = GCN(num_layers,embedding_size)
+        self.out = torch.nn.Linear(2*embedding_size,pairing.data.Dataset.num_classes())
 
     def forward(self, x_s, edge_index_s, x_s_batch, x_t, edge_index_t, x_t_batch, y, *args, **kwargs):
         emb_s = self.gcn(x_s,edge_index_s,x_s_batch)
@@ -58,59 +71,81 @@ class MixturePredictor(torch.nn.Module):
         # sigmoid automatically
         return self.out(embedding)
 
+def generate_params():
+    # Hyperparameters for optimization trials
+    distributions = {
+        'STEPS': scipy.stats.loguniform(1e1, 1e3), 
+        'LR': scipy.stats.loguniform(1e-6, 1e-3),
+        'DIM': scipy.stats.randint(4, 9),
+        "LAYERS": scipy.stats.randint(1, 5),
+    }
+    params = dict()
+    for key, val in distributions.items():
+        try:
+            params[key] = val.rvs(1).item()
+        except:
+            params[key] = val.rvs(1)
+    return params
 
-model = MixturePredictor()
-train_loader = pairing.data.loader(train,batch_size=32)
-test_loader = pairing.data.loader(test,batch_size=32)
+def do_train(params):
+    print(params)
 
-loss_fn = torch.nn.BCEWithLogitsLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+    model = MixturePredictor(num_layers=params["LAYERS"],embedding_size=2**params["DIM"])
 
-def do_train_epoch():
-    for batch in train_loader:
-        optimizer.zero_grad()
-        
-        pred = model(**batch.to_dict())
-        
-        loss = loss_fn(pred,batch.y)
-        loss.backward()
+    bsz = 64
+    train_loader = pairing.data.loader(train,batch_size=bsz)
+    test_loader = pairing.data.loader(test,batch_size=bsz)
 
-        optimizer.step()
+    loss_fn = torch.nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=params["LR"])
 
-    return loss
-
-def collate_test():
-    preds = []
-    ys = []
-    for batch in test_loader:
-        with torch.no_grad():        
+    def do_train_epoch():
+        for batch in train_loader:
+            optimizer.zero_grad()
+            
             pred = model(**batch.to_dict())
+            
+            loss = loss_fn(pred,batch.y)
+            loss.backward()
 
-        preds.append(pred)
-        ys.append(batch.y)
+            optimizer.step()
 
-    return torch.cat(preds[:2],dim=0), torch.cat(ys[:2],dim=0)
+        return loss
 
-def get_test_loss():
-    pred, y = collate_test()
-    return loss_fn(pred,y)
+    def collate_test():
+        preds = []
+        ys = []
+        for batch in test_loader:
+            with torch.no_grad():        
+                pred = model(**batch.to_dict())
 
-def get_auroc():
-    pred, y = collate_test()
-    return auroc(pred,y.int())
+            preds.append(pred)
+            ys.append(batch.y)
+
+        return torch.cat(preds,dim=0), torch.cat(ys,dim=0)
+
+    def get_test_loss():
+        pred, y = collate_test()
+        return loss_fn(pred,y)
+
+    def get_auroc():
+        pred, y = collate_test()
+        return auroc(pred,y.int())
 
 
-steps = 100
-writer = SummaryWriter()
-for i in tqdm.tqdm(range(steps)):
-    loss = do_train_epoch()
-    tl = get_test_loss()
-    writer.add_scalars('Loss',{'train':loss,'test': tl},i)
+    writer = SummaryWriter()
+    for i in tqdm.tqdm(range(int(params["STEPS"]))):
+        loss = do_train_epoch()
+        tl = get_test_loss()
+        writer.add_scalars('Loss',{'train':loss,'test': tl},i)
 
-writer.add_hparams({"steps":steps},{"auroc":get_auroc()})
-writer.close()
-# batches = data.batch_graphs(batch_size=32, drop_last=True)
-# for batch in batches:
-#     print(batch)
-#     break
+    metrics = {"auroc":get_auroc()}
+    params["graph_out_tanh"] = False
+    params["GIN"] = True
+    print(params,metrics)
+    writer.add_hparams(params,metrics)
+    writer.close()
 
+# do_train({'STEPS': 1000, 'LR': 1e-5, 'DIM': 8, 'LAYERS': 4})
+for _ in range(30):
+    do_train(generate_params())

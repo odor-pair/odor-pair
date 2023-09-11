@@ -155,6 +155,9 @@ cython_debug/
 # Webcrawl Cache
 cache/
 
+# Dataset
+pairing/allpairs.pt
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

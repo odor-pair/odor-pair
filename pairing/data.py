@@ -105,6 +105,8 @@ def build(limit=None):
 
     if limit:
         pairings = random.sample(sorted(pairings.items()),limit)
+    else:
+        pairings = sorted(pairings.items())
 
     data_list = []
     for (sm1,sm2),notes in tqdm.tqdm(pairings):
@@ -127,9 +129,14 @@ class Dataset(InMemoryDataset):
     def num_classes(cls):
         return 109
 
+    @classmethod
+    def num_features(cls):
+        return 9
+
 def loader(dataset,batch_size):
     return DataLoader(dataset, batch_size=batch_size,follow_batch=['x_s', 'x_t'] )
 
+# Baseline auroc using mean of labels is 0.5
 def baseline():
     data = Dataset()
     auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes())
@@ -139,11 +146,12 @@ def baseline():
         ys.append(d.y)
     y = torch.stack(ys,dim=0)
     pred = y.mean(dim=0).unsqueeze(0)
+    print(pred)
     pred = pred.expand(len(ys),-1)
 
     score = auroc(pred,y.int())
     print(f"Baseline auroc using mean of labels is {score}")
 
 if __name__ == "__main__":
-    # build(10000)
+    # build()
     baseline()
