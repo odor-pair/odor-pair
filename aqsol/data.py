@@ -14,7 +14,7 @@ def to_torch(smiles,y):
     tensor_keys = ["edge_index",'edge_feat','node_feat']
     for key in tensor_keys:
         graph[key] = torch.tensor(graph[key])
-    return Data(x=graph["node_feat"],edge_index=graph["edge_index"],edge_attr=graph["edge_feat"],y=y)
+    return Data(x=graph["node_feat"].float(),edge_index=graph["edge_index"],edge_attr=graph["edge_feat"],y=y)
 
 # SOOOOO HACKY. Call this to rebuild
 def build():
@@ -29,6 +29,5 @@ def build():
 
 class Dataset(InMemoryDataset):
     def __init__(self, transform=None):
-        super().__init__("aqsoldata", transform)
+        super().__init__("aqsol", transform)
         self.data, self.slices = torch.load(fname)
-
