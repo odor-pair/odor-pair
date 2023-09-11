@@ -134,14 +134,18 @@ def do_train(params):
 
 
     writer = SummaryWriter()
+    best_loss = float('inf')
     for i in tqdm.tqdm(range(int(params["STEPS"]))):
         loss = do_train_epoch()
         tl = get_test_loss()
-        writer.add_scalars('Loss',{'train':loss,'test': tl},i)
+        if tl < best_loss:
+            best_loss = loss
+        else:
+            print(f"Stopping early after {i}")
+            break
+        # writer.add_scalars('Loss',{'train':loss,'test': tl},i)
 
-    metrics = {"auroc":get_auroc()}
-    params["graph_out_tanh"] = False
-    params["GIN"] = True
+    metrics = {"auroc":get_auroc(),"completed":i}
     print(params,metrics)
     writer.add_hparams(params,metrics)
     writer.close()
