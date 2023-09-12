@@ -192,5 +192,5 @@ def baseline():
     print(f"Baseline auroc using mean of labels is {score}")
 
 if __name__ == "__main__":
-    # build(train_frac=.8,test_frac=.2)
+    build(train_frac=.8,test_frac=.2)
     baseline()

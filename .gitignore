@@ -156,7 +156,7 @@ cython_debug/
 cache/
 
 # Datasets and models
-.pt
+*.pt
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
