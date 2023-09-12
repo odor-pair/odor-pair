@@ -16,16 +16,15 @@ import pairing.data
 import scipy
 import scipy.stats
 
+import uuid
+
 torch.manual_seed(42)
 
 auroc = torchmetrics.classification.MultilabelAUROC(pairing.data.Dataset.num_classes())
 
-data = pairing.data.Dataset()
-
-train_size = int(0.9 * len(data))
-test_size = len(data) - train_size
-train, test = torch.utils.data.random_split(data, [train_size, test_size])
-print(f"Training datapoints = {train_size}. Test datapoints = {test_size}.")
+train = pairing.data.Dataset(is_train=True)
+test = pairing.data.Dataset(is_train=False)
+print(f"Training datapoints = {len(train)}. Test datapoints = {len(test)}.")
 
 
 class GCN(torch.nn.Module):
@@ -74,9 +73,9 @@ class MixturePredictor(torch.nn.Module):
 def generate_params():
     # Hyperparameters for optimization trials
     distributions = {
-        'STEPS': scipy.stats.loguniform(1e1, 1e3), 
-        'LR': scipy.stats.loguniform(1e-6, 1e-3),
-        'DIM': scipy.stats.randint(4, 9),
+        'STEPS': scipy.stats.loguniform(1e2, 1e3), 
+        'LR': scipy.stats.loguniform(1e-7, 1e-3),
+        'DIM': scipy.stats.randint(6,12),
         "LAYERS": scipy.stats.randint(1, 5),
     }
     params = dict()
@@ -92,7 +91,7 @@ def do_train(params):
 
     model = MixturePredictor(num_layers=params["LAYERS"],embedding_size=2**params["DIM"])
 
-    bsz = 64
+    bsz = 2**8
     train_loader = pairing.data.loader(train,batch_size=bsz)
     test_loader = pairing.data.loader(test,batch_size=bsz)
 
@@ -100,6 +99,7 @@ def do_train(params):
     optimizer = torch.optim.Adam(model.parameters(), lr=params["LR"])
 
     def do_train_epoch():
+        losses = []
         for batch in train_loader:
             optimizer.zero_grad()
             
@@ -107,10 +107,11 @@ def do_train(params):
             
             loss = loss_fn(pred,batch.y)
             loss.backward()
+            losses.append(loss*len(batch.y))
 
             optimizer.step()
 
-        return loss
+        return torch.stack(losses).sum() / len(train)
 
     def collate_test():
         preds = []
@@ -133,7 +134,9 @@ def do_train(params):
         return auroc(pred,y.int())
 
 
-    writer = SummaryWriter()
+    run_name = str(uuid.uuid1())[:8]
+    log_dir = f"runs/{run_name}"
+    writer = SummaryWriter(log_dir=log_dir)
     best_loss = float('inf')
     for i in tqdm.tqdm(range(int(params["STEPS"]))):
         loss = do_train_epoch()
@@ -143,13 +146,14 @@ def do_train(params):
         else:
             print(f"Stopping early after {i}")
             break
-        # writer.add_scalars('Loss',{'train':loss,'test': tl},i)
+        writer.add_scalars('Loss',{'train':loss,'test': tl},i)
 
+    torch.save(model,f"{log_dir}/model.pt")
     metrics = {"auroc":get_auroc(),"completed":i}
-    print(params,metrics)
+    print(run_name,params,metrics)
     writer.add_hparams(params,metrics)
     writer.close()
 
-# do_train({'STEPS': 1000, 'LR': 1e-5, 'DIM': 8, 'LAYERS': 4})
+# do_train({"LAYERS":1,"STEPS":2,"LR":1e-5,"DIM":2})
 for _ in range(30):
     do_train(generate_params())

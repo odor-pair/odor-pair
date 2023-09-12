@@ -5,6 +5,8 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data import InMemoryDataset, download_url, Data
 from ogb.utils import smiles2graph
 import torchmetrics
+import sklearn
+import sklearn.model_selection
 
 import os
 import json
@@ -29,7 +31,8 @@ class PairData(Data):
 
 raw_dir = "data"
 out_dir = "pairing"
-out_name = "allpairs.pt"
+train_fname = "trainpairs.pt"
+test_fname = "testpairs.pt"
 
 def order_pair(sm1,sm2):
     if sm1 < sm2:
@@ -63,6 +66,7 @@ def get_pairings():
 
     pairings = collections.defaultdict(set)
     all_notes = set()
+    all_smiles = set()
 
     usable = [data for data in all_data if data["notes"] and data["blenders"] and data["smiles"]]
     print(f"Found {len(usable)} usable datapoints out of {len(all_data)} total.")
@@ -70,7 +74,13 @@ def get_pairings():
     name_to_smiles = {data["name"]:data["smiles"] for data in usable}
     valid = set(data["name"] for data in usable)
 
+    dupes = 0
     for data in usable:
+        if data["smiles"] in all_smiles:
+            dupes += 1
+            continue
+        all_smiles.add(data["smiles"])
+
         for (other,note) in data["blenders"]:
             if not other in valid:
                 continue
@@ -81,12 +91,13 @@ def get_pairings():
             pairings[pair].add(note)
             all_notes.add(note)
 
-    print(f"Duplication = {len(pairings)/len(usable)}.")
+    print(f"Found {dupes} duplicates out of {len(usable)} datapoints.")
+    print(f"Pairings per chemical = {len(pairings)/len(usable)}.")
     
     all_notes = list(all_notes)
     print(f"Found a total of {len(all_notes)} notes.")
 
-    return pairings, all_notes
+    return pairings, all_smiles, all_notes
 
 def multi_hot(notes,all_notes):
     indices = torch.tensor([all_notes.index(n) for n in notes])
@@ -100,30 +111,52 @@ def to_pairdata(sm1,sm2,notes,all_notes):
     pd = PairData(x_s=d1["node_feat"].float(), edge_index_s=d1["edge_index"], x_t=d2["node_feat"].float(), edge_index_t=d2["edge_index"],y=y.float())
     return pd
 
-def build(limit=None):
-    pairings, all_notes = get_pairings()
-
-    if limit:
-        pairings = random.sample(sorted(pairings.items()),limit)
-    else:
-        pairings = sorted(pairings.items())
-
+def build_data_list(pairings,smiles,all_notes):
     data_list = []
     for (sm1,sm2),notes in tqdm.tqdm(pairings):
+        if not sm1 in smiles or not sm2 in smiles:
+            continue
         try:
             pd = to_pairdata(sm1,sm2,notes,all_notes)
             data_list.append(pd)
         except AttributeError:
             # Not printing anything because ogb will print error.
             continue
+    return data_list
 
+def save(data_list,fname):
     data, slices = InMemoryDataset.collate(data_list)
-    torch.save((data, slices), os.path.join(out_dir,out_name))
+    torch.save((data, slices), os.path.join(out_dir,fname))
+
+
+def build(train_frac, test_frac, limit=None):
+    pairings, all_smiles, all_notes = get_pairings()
+
+    if limit:
+        pairings = random.sample(sorted(pairings.items()),limit)
+    else:
+        pairings = sorted(pairings.items())
+
+    train_smiles, test_smiles = sklearn.model_selection.train_test_split(list(all_smiles), train_size=train_frac, test_size=test_frac)
+    train_smiles, test_smiles = set(train_smiles), set(test_smiles)
+    assert len(train_smiles.intersection(test_smiles)) == 0
+
+    train_data_list = build_data_list(pairings,train_smiles,all_notes)
+    save(train_data_list,train_fname)
+
+    test_data_list = build_data_list(pairings,test_smiles,all_notes)
+    save(test_data_list,test_fname)
+
+    print(f"Built {len(train_data_list)} train and {len(test_data_list)} test datapoints.")
+    print(f"Discarded {len(pairings)-(len(train_data_list)+len(test_data_list))} for train/test separation.")
 
 class Dataset(InMemoryDataset):
-    def __init__(self):
+    def __init__(self,is_train):
         super().__init__("pairing")
-        self.data, self.slices = torch.load(os.path.join(out_dir,out_name))
+        if is_train:
+            self.data, self.slices = torch.load(os.path.join(out_dir,train_fname))
+        else:
+            self.data, self.slices = torch.load(os.path.join(out_dir,test_fname))
 
     @classmethod
     def num_classes(cls):
@@ -138,20 +171,26 @@ def loader(dataset,batch_size):
 
 # Baseline auroc using mean of labels is 0.5
 def baseline():
-    data = Dataset()
+    train_data = Dataset(is_train=True)
     auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes())
 
-    ys = []
-    for d in data:
-        ys.append(d.y)
-    y = torch.stack(ys,dim=0)
-    pred = y.mean(dim=0).unsqueeze(0)
+    train_ys = []
+    for d in train_data:
+        train_ys.append(d.y)
+    train_y = torch.stack(train_ys,dim=0)
+    pred = train_y.mean(dim=0).unsqueeze(0)
     print(pred)
-    pred = pred.expand(len(ys),-1)
 
-    score = auroc(pred,y.int())
+    test_data = Dataset(is_train=False)
+    test_ys = []
+    for d in test_data:
+        test_ys.append(d.y)
+    test_y = torch.stack(test_ys,dim=0)
+
+    pred = pred.expand(len(test_y),-1)
+    score = auroc(pred,test_y.int())
     print(f"Baseline auroc using mean of labels is {score}")
 
 if __name__ == "__main__":
-    # build()
+    # build(train_frac=.8,test_frac=.2)
     baseline()
