@@ -6,6 +6,8 @@ import torchmetrics
 import tqdm
 
 from pairing.data import PairData
+from pairing.data import Dataset
+from pairing.data import loader
 import pairing.data
 
 import scipy
@@ -15,33 +17,48 @@ import uuid
 
 torch.manual_seed(42)
 
-auroc = torchmetrics.classification.MultilabelAUROC(pairing.data.Dataset.num_classes())
+auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes())
 
-train = pairing.data.Dataset(is_train=True)
-test = pairing.data.Dataset(is_train=False)
+train = Dataset(is_train=True)
+test = Dataset(is_train=False)
 print(f"Training datapoints = {len(train)}. Test datapoints = {len(test)}.")
 
+device="cpu"
+
+# Construct models
+
+dropout = .1
+
+def make_sequential(num_layers,input_dim,output_dim,dropout):
+    layers = []
+    layers.append(torch.nn.Sequential(torch.nn.Linear(input_dim, output_dim), torch.nn.ReLU(),torch.nn.Dropout(p=dropout)))
+    while len(layers) < num_layers:
+        layers.append(torch.nn.Sequential(torch.nn.Linear(output_dim, output_dim), torch.nn.ReLU(),torch.nn.Dropout(p=dropout)))
+    return torch.nn.Sequential(*layers)
 
 class GCN(torch.nn.Module):
-    def __init__(self,num_layers,embedding_size):
+    def __init__(self,num_gcn,num_linear,embedding_size):
         super(GCN, self).__init__()
 
         self.layers = []
         self.task = "graph"
-        self.dropout = .1
-        self.layers.append(self.build_conv_model(pairing.data.Dataset.num_features(), embedding_size))
-        while len(self.layers) < num_layers:
-            self.layers.append(self.build_conv_model(embedding_size, embedding_size))
+        self.layers.append(self.build_conv_model(num_linear,Dataset.num_features(), embedding_size))
+        while len(self.layers) < num_gcn:
+            self.layers.append(self.build_conv_model(num_linear,embedding_size, embedding_size))
 
-        self.post_mp = torch.nn.Sequential(torch.nn.Linear(embedding_size, embedding_size), torch.nn.ReLU(),torch.nn.Dropout(p=self.dropout))
+        for layer in self.layers:
+          layer.to(device)
 
-    def build_conv_model(self, input_dim, hidden_dim):
+        self.post_mp = make_sequential(num_linear,embedding_size,embedding_size,dropout)
+        self.post_mp.to(device)
+
+    def build_conv_model(self, num_linear, input_dim, hidden_dim):
         # refer to pytorch geometric nn module for different implementation of GNNs.
         if self.task == 'node':
             return pyg.nn.GCNConv(input_dim, hidden_dim)
         else:
             return pyg.nn.GINConv(torch.nn.Sequential(torch.nn.Linear(input_dim, hidden_dim),
-                                  torch.nn.ReLU(), torch.nn.Dropout(p=self.dropout)))
+                                  torch.nn.ReLU(), torch.nn.Dropout(p=dropout)))
 
     def forward(self, x, edge_index, batch_index):
         for layer in self.layers:
@@ -51,13 +68,13 @@ class GCN(torch.nn.Module):
         return self.post_mp(pooled)
 
 class MixturePredictor(torch.nn.Module):
-    def __init__(self,num_layers,embedding_size):
+    def __init__(self,num_gcn,num_linear,embedding_size):
         super(MixturePredictor,self).__init__()
 
-        self.gcn = GCN(num_layers,embedding_size)
+        self.gcn = GCN(num_gcn,num_linear,embedding_size)
         # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
         # sigmoid automatically
-        self.out = torch.nn.Linear(2*embedding_size,pairing.data.Dataset.num_classes())
+        self.out = make_sequential(num_linear,2*embedding_size,Dataset.num_classes(),dropout)#torch.nn.Linear(2*embedding_size,Dataset.num_classes())
 
     def forward(self, x_s, edge_index_s, x_s_batch, x_t, edge_index_t, x_t_batch, y, *args, **kwargs):
         emb_s = self.gcn(x_s,edge_index_s,x_s_batch)
@@ -69,10 +86,11 @@ class MixturePredictor(torch.nn.Module):
 def generate_params():
     # Hyperparameters for optimization trials
     distributions = {
-        'STEPS': scipy.stats.loguniform(1e2, 1e3), 
+        'STEPS': scipy.stats.loguniform(1e1, 1e2), 
         'LR': scipy.stats.loguniform(1e-4, 1e-1),
         'DIM': scipy.stats.randint(6,12),
-        "LAYERS": scipy.stats.randint(1, 5),
+        "LINEAR": scipy.stats.randint(1, 5),
+        "GCN": scipy.stats.randint(1, 5),
     }
     params = dict()
     for key, val in distributions.items():
@@ -85,18 +103,21 @@ def generate_params():
 def do_train(params):
     print(params)
 
-    model = MixturePredictor(num_layers=params["LAYERS"],embedding_size=2**params["DIM"])
+    model = MixturePredictor(num_gcn=params["GCN"],num_linear=params["LINEAR"],embedding_size=2**params["DIM"]).to(device)
 
-    bsz = 2**8
-    train_loader = pairing.data.loader(train,batch_size=bsz)
-    test_loader = pairing.data.loader(test,batch_size=bsz)
+    bsz = int((2**18)/(2**params["DIM"]))
+    print(f"BSZ={bsz}")
+    train_loader = loader(train,batch_size=bsz)
+    test_loader = loader(test,batch_size=bsz)
 
     loss_fn = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=params["LR"])
 
     def do_train_epoch():
+        model.train()
         losses = []
         for batch in train_loader:
+            batch.to(device)
             optimizer.zero_grad()
             
             pred = model(**batch.to_dict())
@@ -110,9 +131,11 @@ def do_train(params):
         return torch.stack(losses).sum() / len(train)
 
     def collate_test():
+        model.eval()
         preds = []
         ys = []
         for batch in test_loader:
+            batch.to(device)
             with torch.no_grad():        
                 pred = model(**batch.to_dict())
 
@@ -150,6 +173,6 @@ def do_train(params):
     writer.add_hparams(params,metrics)
     writer.close()
 
-do_train({"LAYERS":1,"STEPS":2,"LR":1e-3,"DIM":2})
-# for _ in range(30):
-#     do_train(generate_params())
+# do_train({"GCN":2,"LINEAR":2,"STEPS":2,"LR":1e-3,"DIM":2})
+for _ in range(30):
+    do_train(generate_params())
