@@ -1,10 +1,5 @@
-from rdkit import Chem
-from rdkit.Chem.Draw import MolToImage
-import pandas as pd
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from ogb.graphproppred import PygGraphPropPredDataset
-from ogb.utils import smiles2graph
 import torch
 import torch_geometric as pyg
 import torchmetrics
@@ -33,9 +28,12 @@ class GCN(torch.nn.Module):
 
         self.layers = []
         self.task = "graph"
+        self.dropout = .1
         self.layers.append(self.build_conv_model(pairing.data.Dataset.num_features(), embedding_size))
         while len(self.layers) < num_layers:
             self.layers.append(self.build_conv_model(embedding_size, embedding_size))
+
+        self.post_mp = torch.nn.Sequential(torch.nn.Linear(embedding_size, embedding_size), torch.nn.ReLU(),torch.nn.Dropout(p=self.dropout))
 
     def build_conv_model(self, input_dim, hidden_dim):
         # refer to pytorch geometric nn module for different implementation of GNNs.
@@ -43,21 +41,22 @@ class GCN(torch.nn.Module):
             return pyg.nn.GCNConv(input_dim, hidden_dim)
         else:
             return pyg.nn.GINConv(torch.nn.Sequential(torch.nn.Linear(input_dim, hidden_dim),
-                                  torch.nn.ReLU(), torch.nn.Linear(hidden_dim, hidden_dim)))
+                                  torch.nn.ReLU(), torch.nn.Dropout(p=self.dropout)))
 
     def forward(self, x, edge_index, batch_index):
         for layer in self.layers:
             x = layer(x,edge_index)
-            x = torch.nn.functional.tanh(x)
 
         pooled = pyg.nn.pool.global_mean_pool(x,batch_index)
-        return pooled
+        return self.post_mp(pooled)
 
 class MixturePredictor(torch.nn.Module):
     def __init__(self,num_layers,embedding_size):
         super(MixturePredictor,self).__init__()
 
         self.gcn = GCN(num_layers,embedding_size)
+        # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
+        # sigmoid automatically
         self.out = torch.nn.Linear(2*embedding_size,pairing.data.Dataset.num_classes())
 
     def forward(self, x_s, edge_index_s, x_s_batch, x_t, edge_index_t, x_t_batch, y, *args, **kwargs):
@@ -65,16 +64,13 @@ class MixturePredictor(torch.nn.Module):
         emb_t = self.gcn(x_t,edge_index_t,x_t_batch)
 
         embedding = torch.cat([emb_s,emb_t],dim=1)
-
-        # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
-        # sigmoid automatically
         return self.out(embedding)
 
 def generate_params():
     # Hyperparameters for optimization trials
     distributions = {
         'STEPS': scipy.stats.loguniform(1e2, 1e3), 
-        'LR': scipy.stats.loguniform(1e-7, 1e-3),
+        'LR': scipy.stats.loguniform(1e-4, 1e-1),
         'DIM': scipy.stats.randint(6,12),
         "LAYERS": scipy.stats.randint(1, 5),
     }
@@ -154,6 +150,6 @@ def do_train(params):
     writer.add_hparams(params,metrics)
     writer.close()
 
-# do_train({"LAYERS":1,"STEPS":2,"LR":1e-5,"DIM":2})
-for _ in range(30):
-    do_train(generate_params())
+do_train({"LAYERS":1,"STEPS":2,"LR":1e-3,"DIM":2})
+# for _ in range(30):
+#     do_train(generate_params())

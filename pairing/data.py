@@ -4,7 +4,6 @@ import torch
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import InMemoryDataset, download_url, Data
 from ogb.utils import smiles2graph
-import torchmetrics
 import sklearn
 import sklearn.model_selection
 
@@ -169,28 +168,5 @@ class Dataset(InMemoryDataset):
 def loader(dataset,batch_size):
     return DataLoader(dataset, batch_size=batch_size,follow_batch=['x_s', 'x_t'] )
 
-# Baseline auroc using mean of labels is 0.5
-def baseline():
-    train_data = Dataset(is_train=True)
-    auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes())
-
-    train_ys = []
-    for d in train_data:
-        train_ys.append(d.y)
-    train_y = torch.stack(train_ys,dim=0)
-    pred = train_y.mean(dim=0).unsqueeze(0)
-    print(pred)
-
-    test_data = Dataset(is_train=False)
-    test_ys = []
-    for d in test_data:
-        test_ys.append(d.y)
-    test_y = torch.stack(test_ys,dim=0)
-
-    pred = pred.expand(len(test_y),-1)
-    score = auroc(pred,test_y.int())
-    print(f"Baseline auroc using mean of labels is {score}")
-
 if __name__ == "__main__":
     build(train_frac=.8,test_frac=.2)
-    baseline()
