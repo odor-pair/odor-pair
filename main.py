@@ -29,11 +29,19 @@ device="cpu"
 
 dropout = .1
 
-def make_sequential(num_layers,input_dim,output_dim,dropout):
+def make_sequential(num_layers,input_dim,output_dim,dropout,is_last=False):
     layers = []
     layers.append(torch.nn.Sequential(torch.nn.Linear(input_dim, output_dim), torch.nn.ReLU(),torch.nn.Dropout(p=dropout)))
     while len(layers) < num_layers:
         layers.append(torch.nn.Sequential(torch.nn.Linear(output_dim, output_dim), torch.nn.ReLU(),torch.nn.Dropout(p=dropout)))
+
+    # No dropout or non-linearity
+    if is_last:
+        if num_layers == 1:
+            layers[-1] = torch.nn.Sequential(torch.nn.Linear(input_dim, output_dim))
+        else:
+            layers[-1] = torch.nn.Sequential(torch.nn.Linear(output_dim, output_dim))
+
     return torch.nn.Sequential(*layers)
 
 class GCN(torch.nn.Module):
@@ -49,7 +57,7 @@ class GCN(torch.nn.Module):
         for layer in self.layers:
           layer.to(device)
 
-        self.post_mp = make_sequential(num_linear,embedding_size,embedding_size,dropout)
+        self.post_mp = make_sequential(num_linear,embedding_size,embedding_size,dropout,is_last=True)
         self.post_mp.to(device)
 
     def build_conv_model(self, num_linear, input_dim, hidden_dim):
@@ -74,7 +82,7 @@ class MixturePredictor(torch.nn.Module):
         self.gcn = GCN(num_gcn,num_linear,embedding_size)
         # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
         # sigmoid automatically
-        self.out = make_sequential(num_linear,2*embedding_size,Dataset.num_classes(),dropout)#torch.nn.Linear(2*embedding_size,Dataset.num_classes())
+        self.out = make_sequential(num_linear,2*embedding_size,Dataset.num_classes(),dropout,is_last=True)
 
     def forward(self, x_s, edge_index_s, x_s_batch, x_t, edge_index_t, x_t_batch, y, *args, **kwargs):
         emb_s = self.gcn(x_s,edge_index_s,x_s_batch)
@@ -169,10 +177,11 @@ def do_train(params):
 
     torch.save(model,f"{log_dir}/model.pt")
     metrics = {"auroc":get_auroc(),"completed":i}
-    print(run_name,params,metrics)
+    print(run_name,metrics,params,sep="\n")
     writer.add_hparams(params,metrics)
     writer.close()
 
-# do_train({"GCN":2,"LINEAR":2,"STEPS":2,"LR":1e-3,"DIM":2})
-for _ in range(30):
-    do_train(generate_params())
+do_train({"GCN":2,"LINEAR":1,"STEPS":3,"LR":2e-5,"DIM":6})
+do_train({"GCN":1,"LINEAR":2,"STEPS":4,"LR":3e-3,"DIM":4})
+# for _ in range(30):
+#     do_train(generate_params())
