@@ -27,7 +27,7 @@ device="cpu"
 
 # Construct models
 
-dropout = .1
+dropout = 0
 
 def make_sequential(num_layers,input_dim,output_dim,dropout,is_last=False):
     layers = []
@@ -45,17 +45,19 @@ def make_sequential(num_layers,input_dim,output_dim,dropout,is_last=False):
     return torch.nn.Sequential(*layers)
 
 class GCN(torch.nn.Module):
-    def __init__(self,num_gcn,num_linear,embedding_size):
+    def __init__(self,num_convs,num_linear,embedding_size):
         super(GCN, self).__init__()
 
         self.layers = []
         self.task = "graph"
-        self.layers.append(self.build_conv_model(num_linear,Dataset.num_features(), embedding_size))
-        while len(self.layers) < num_gcn:
-            self.layers.append(self.build_conv_model(num_linear,embedding_size, embedding_size))
 
-        for layer in self.layers:
-          layer.to(device)
+        self.num_convs = num_convs
+        self.gcn = self.build_conv_model(num_linear,embedding_size, embedding_size)
+        self.gcn.to(device)
+
+        # In order to tie the weights of all convolutions, the input is first
+        # padded with zeros to reach embedding size.
+        self.pad = torch.nn.ZeroPad2d((0,embedding_size-Dataset.num_features(),0,0))
 
         self.post_mp = make_sequential(num_linear,embedding_size,embedding_size,dropout,is_last=True)
         self.post_mp.to(device)
@@ -69,17 +71,18 @@ class GCN(torch.nn.Module):
                                   torch.nn.ReLU(), torch.nn.Dropout(p=dropout)))
 
     def forward(self, x, edge_index, batch_index):
-        for layer in self.layers:
-            x = layer(x,edge_index)
+        x = self.pad(x)
+        for _ in range(self.num_convs):
+            x = self.gcn(x,edge_index)
 
         pooled = pyg.nn.pool.global_mean_pool(x,batch_index)
         return self.post_mp(pooled)
 
 class MixturePredictor(torch.nn.Module):
-    def __init__(self,num_gcn,num_linear,embedding_size):
+    def __init__(self,num_convs,num_linear,embedding_size):
         super(MixturePredictor,self).__init__()
 
-        self.gcn = GCN(num_gcn,num_linear,embedding_size)
+        self.gcn = GCN(num_convs,num_linear,embedding_size)
         # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
         # sigmoid automatically
         self.out = make_sequential(num_linear,2*embedding_size,Dataset.num_classes(),dropout,is_last=True)
@@ -98,7 +101,7 @@ def generate_params():
         'LR': scipy.stats.loguniform(1e-4, 1e-1),
         'DIM': scipy.stats.randint(6,12),
         "LINEAR": scipy.stats.randint(1, 5),
-        "GCN": scipy.stats.randint(1, 5),
+        "CONVS": scipy.stats.randint(1, 10),
     }
     params = dict()
     for key, val in distributions.items():
@@ -111,7 +114,7 @@ def generate_params():
 def do_train(params):
     print(params)
 
-    model = MixturePredictor(num_gcn=params["GCN"],num_linear=params["LINEAR"],embedding_size=2**params["DIM"]).to(device)
+    model = MixturePredictor(num_convs=params["CONVS"],num_linear=params["LINEAR"],embedding_size=2**params["DIM"]).to(device)
 
     bsz = int((2**18)/(2**params["DIM"]))
     print(f"BSZ={bsz}")
@@ -165,23 +168,29 @@ def do_train(params):
     log_dir = f"runs/{run_name}"
     writer = SummaryWriter(log_dir=log_dir)
     best_loss = float('inf')
-    for i in tqdm.tqdm(range(int(params["STEPS"]))):
+    patience = 0
+    for s in tqdm.tqdm(range(int(params["STEPS"]))):
         loss = do_train_epoch()
         tl = get_test_loss()
         if tl < best_loss:
             best_loss = loss
+            patience = 0
         else:
-            print(f"Stopping early after {i}")
-            break
-        writer.add_scalars('Loss',{'train':loss,'test': tl},i)
+            patience += 1
+            if patience >= 3:
+                print(f"Stopping early after {s}")
+                break
+            else:
+                print(f"Patience={patience}@{s}.")
+        writer.add_scalars('Loss',{'train':loss,'test': tl},s)
 
     torch.save(model,f"{log_dir}/model.pt")
-    metrics = {"auroc":get_auroc(),"completed":i}
+    metrics = {"auroc":get_auroc(),"completed":s}
     print(run_name,metrics,params,sep="\n")
     writer.add_hparams(params,metrics)
     writer.close()
 
-do_train({"GCN":2,"LINEAR":1,"STEPS":3,"LR":2e-5,"DIM":6})
-do_train({"GCN":1,"LINEAR":2,"STEPS":4,"LR":3e-3,"DIM":4})
-# for _ in range(30):
-#     do_train(generate_params())
+# do_train({"CONVS":2,"LINEAR":1,"STEPS":3,"LR":2e-5,"DIM":6})
+# do_train({"CONVS":1,"LINEAR":2,"STEPS":4,"LR":3e-3,"DIM":4})
+for _ in range(30):
+    do_train(generate_params())
