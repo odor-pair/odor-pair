@@ -9,6 +9,7 @@ from pairing.data import PairData
 from pairing.data import Dataset
 from pairing.data import loader
 import pairing.data
+import copy
 
 import scipy
 import scipy.stats
@@ -29,6 +30,7 @@ device="cpu"
 
 dropout = 0
 
+
 def make_sequential(num_layers,input_dim,output_dim,dropout,is_last=False):
     layers = []
     layers.append(torch.nn.Sequential(torch.nn.Linear(input_dim, output_dim), torch.nn.ReLU(),torch.nn.Dropout(p=dropout)))
@@ -45,21 +47,27 @@ def make_sequential(num_layers,input_dim,output_dim,dropout,is_last=False):
     return torch.nn.Sequential(*layers)
 
 class GCN(torch.nn.Module):
-    def __init__(self,num_convs,num_linear,embedding_size):
+    def __init__(self,num_convs,num_linear,embedding_size,aggr_steps):
         super(GCN, self).__init__()
 
         self.layers = []
         self.task = "graph"
 
-        self.num_convs = num_convs
-        self.gcn = self.build_conv_model(num_linear,embedding_size, embedding_size)
-        self.gcn.to(device)
-
         # In order to tie the weights of all convolutions, the input is first
         # padded with zeros to reach embedding size.
         self.pad = torch.nn.ZeroPad2d((0,embedding_size-Dataset.num_features(),0,0))
 
-        self.post_mp = make_sequential(num_linear,embedding_size,embedding_size,dropout,is_last=True)
+        self.num_convs = num_convs
+        self.gcn = self.build_conv_model(num_linear,embedding_size, embedding_size)
+        self.gcn.to(device)
+
+        
+        self.readout = pyg.nn.aggr.Set2Set(embedding_size,aggr_steps)
+        self.readout.to(device)
+
+        # Set2Set returns an output 2x wider than the input. 
+        # The GCN returns an output of embedding_size. 
+        self.post_mp = make_sequential(num_linear,2*embedding_size,embedding_size,dropout,is_last=True)
         self.post_mp.to(device)
 
     def build_conv_model(self, num_linear, input_dim, hidden_dim):
@@ -75,14 +83,14 @@ class GCN(torch.nn.Module):
         for _ in range(self.num_convs):
             x = self.gcn(x,edge_index)
 
-        pooled = pyg.nn.pool.global_mean_pool(x,batch_index)
+        pooled = self.readout(x,index=batch_index)
         return self.post_mp(pooled)
 
 class MixturePredictor(torch.nn.Module):
-    def __init__(self,num_convs,num_linear,embedding_size):
+    def __init__(self,num_convs,num_linear,embedding_size,aggr_steps):
         super(MixturePredictor,self).__init__()
 
-        self.gcn = GCN(num_convs,num_linear,embedding_size)
+        self.gcn = GCN(num_convs,num_linear,embedding_size,aggr_steps)
         # Not using a sigmoid layer, because we will use BCEWithLogitsLoss which does
         # sigmoid automatically
         self.out = make_sequential(num_linear,2*embedding_size,Dataset.num_classes(),dropout,is_last=True)
@@ -101,7 +109,10 @@ def generate_params():
         'LR': scipy.stats.loguniform(1e-4, 1e-1),
         'DIM': scipy.stats.randint(6,12),
         "LINEAR": scipy.stats.randint(1, 5),
-        "CONVS": scipy.stats.randint(1, 10),
+        # From paper
+        "CONVS": scipy.stats.randint(3, 9),
+        # From paper
+        "AGGR": scipy.stats.randint(1,13)
     }
     params = dict()
     for key, val in distributions.items():
@@ -114,7 +125,8 @@ def generate_params():
 def do_train(params):
     print(params)
 
-    model = MixturePredictor(num_convs=params["CONVS"],num_linear=params["LINEAR"],embedding_size=2**params["DIM"]).to(device)
+    model = MixturePredictor(num_convs=params["CONVS"],num_linear=params["LINEAR"],embedding_size=2**params["DIM"],aggr_steps=params["AGGR"])
+    model = model.to(device)
 
     bsz = int((2**18)/(2**params["DIM"]))
     print(f"BSZ={bsz}")
@@ -165,25 +177,25 @@ def do_train(params):
 
 
     run_name = str(uuid.uuid1())[:8]
+    # log_dir = f"/content/drive/MyDrive/Pygeom/runs/{run_name}"
     log_dir = f"runs/{run_name}"
     writer = SummaryWriter(log_dir=log_dir)
     best_loss = float('inf')
     patience = 0
+    best = copy.deepcopy(model)
     for s in tqdm.tqdm(range(int(params["STEPS"]))):
         loss = do_train_epoch()
         tl = get_test_loss()
         if tl < best_loss:
+            best = copy.deepcopy(model)
             best_loss = loss
             patience = 0
         else:
-            patience += 1
-            if patience >= 3:
-                print(f"Stopping early after {s}")
-                break
-            else:
-                print(f"Patience={patience}@{s}.")
+            print(f"Stopping early after {s}")
+            break
         writer.add_scalars('Loss',{'train':loss,'test': tl},s)
 
+    model = best
     torch.save(model,f"{log_dir}/model.pt")
     metrics = {"auroc":get_auroc(),"completed":s}
     print(run_name,metrics,params,sep="\n")
