@@ -107,7 +107,7 @@ def to_pairdata(sm1,sm2,notes,all_notes):
     d1 = to_torch(sm1)
     d2 = to_torch(sm2)
     y = multi_hot(notes,all_notes)
-    pd = PairData(x_s=d1["node_feat"].float(), edge_index_s=d1["edge_index"], x_t=d2["node_feat"].float(), edge_index_t=d2["edge_index"],y=y.float())
+    pd = PairData(x_s=d1["node_feat"].float(), edge_attr_s=d1["edge_feat"].float(), edge_index_s=d1["edge_index"], x_t=d2["node_feat"].float(), edge_attr_t=d2["edge_feat"].float(), edge_index_t=d2["edge_index"],y=y.float())
     return pd
 
 def build_data_list(pairings,smiles,all_notes):

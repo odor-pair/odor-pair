@@ -128,14 +128,20 @@ class MixturePredictor(torch.nn.Module):
 def generate_params():
     # Hyperparameters for optimization trials
     distributions = {
-        'STEPS': scipy.stats.loguniform(1e1, 1e2),
-        'LR': scipy.stats.loguniform(1e-4, 1e-1),
-        'DIM': scipy.stats.randint(6, 12),
+        # Paper used 540 epochs
+        # 'STEPS': scipy.stats.loguniform(1e2, 5e2),
+        'STEPS': scipy.stats.randint(500,501),
+        # Paper uses [1e-5,5e-4] but we will use much larger rates
+        # and stop early.
+        'LR': scipy.stats.loguniform(1e-3, 1e-1),
+        'DIM': scipy.stats.randint(5, 8),
         "LINEAR": scipy.stats.randint(1, 5),
         # From paper
         "CONVS": scipy.stats.randint(3, 9),
         # From paper
-        "AGGR": scipy.stats.randint(1, 13)
+        "AGGR": scipy.stats.randint(1, 13),
+        # From paper
+        "DECAY": scipy.stats.loguniform(1e-2,1),
     }
     params = dict()
     for key, val in distributions.items():
@@ -163,10 +169,19 @@ def do_train(params):
     loss_fn = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=params["LR"])
 
+    # From paper
+    end_step = .9 * params["STEPS"]
+    scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer,
+        start_factor=1,
+        end_factor=params["DECAY"],
+        total_iters=end_step)
+
     def do_train_epoch():
         model.train()
         losses = []
         for batch in train_loader:
+            print(batch.to_dict())
             batch.to(device)
             optimizer.zero_grad()
 
@@ -196,6 +211,8 @@ def do_train(params):
 
     def get_test_loss():
         pred, y = collate_test()
+        if pred.sum() == 0:
+            print("HITTING ALL 0")
         return loss_fn(pred, y)
 
     def get_auroc():
@@ -211,6 +228,7 @@ def do_train(params):
     best = copy.deepcopy(model)
     for s in tqdm.tqdm(range(int(params["STEPS"]))):
         loss = do_train_epoch()
+        scheduler.step()
         tl = get_test_loss()
         if tl < best_loss:
             best = copy.deepcopy(model)
