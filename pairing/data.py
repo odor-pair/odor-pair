@@ -191,8 +191,12 @@ class Dataset(InMemoryDataset):
         return 109
 
     @classmethod
-    def num_features(cls):
+    def num_node_features(cls):
         return 9
+
+    @classmethod
+    def num_edge_features(cls):
+        return 3
 
 
 def loader(dataset, batch_size):
@@ -202,4 +206,4 @@ def loader(dataset, batch_size):
 
 
 if __name__ == "__main__":
-    build(train_frac=.8, test_frac=.2)
+    build(train_frac=.85, test_frac=.15)
