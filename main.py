@@ -130,7 +130,7 @@ def generate_params():
     distributions = {
         # Paper used 540 epochs
         # 'STEPS': scipy.stats.loguniform(1e2, 5e2),
-        'STEPS': scipy.stats.randint(500,501),
+        'STEPS': scipy.stats.randint(500, 501),
         # Paper uses [1e-5,5e-4] but we will use much larger rates
         # and stop early.
         'LR': scipy.stats.loguniform(1e-3, 1e-1),
@@ -141,7 +141,7 @@ def generate_params():
         # From paper
         "AGGR": scipy.stats.randint(1, 13),
         # From paper
-        "DECAY": scipy.stats.loguniform(1e-2,1),
+        "DECAY": scipy.stats.loguniform(1e-2, 1),
     }
     params = dict()
     for key, val in distributions.items():
@@ -171,11 +171,10 @@ def do_train(params):
 
     # From paper
     end_step = .9 * params["STEPS"]
-    scheduler = torch.optim.lr_scheduler.LinearLR(
-        optimizer,
-        start_factor=1,
-        end_factor=params["DECAY"],
-        total_iters=end_step)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer,
+                                                  start_factor=1,
+                                                  end_factor=params["DECAY"],
+                                                  total_iters=end_step)
 
     def do_train_epoch():
         model.train()

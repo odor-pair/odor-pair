@@ -2,9 +2,11 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 
+
 # The ordering of the graphs in this is arbitrary (alphabetically based on SMILES)
 # but the logistic predictor does rely on this ordering.
 class PairData(Data):
+
     def __inc__(self, key, value, *args, **kwargs):
         if key == 'edge_index_s':
             return self.x_s.size(0)
@@ -37,11 +39,17 @@ edge_index_4 = torch.tensor([
     [1, 0],
 ])
 
-data1 = PairData(x_s=x_1, edge_index_s=edge_index_1, x_t=x_2, edge_index_t=edge_index_2)
-data2 = PairData(x_s=x_3, edge_index_s=edge_index_3, x_t=x_4, edge_index_t=edge_index_4)
+data1 = PairData(x_s=x_1,
+                 edge_index_s=edge_index_1,
+                 x_t=x_2,
+                 edge_index_t=edge_index_2)
+data2 = PairData(x_s=x_3,
+                 edge_index_s=edge_index_3,
+                 x_t=x_4,
+                 edge_index_t=edge_index_4)
 
-data_list = [data1, data2,data1]
-loader = DataLoader(data_list, batch_size=3,follow_batch=['x_s', 'x_t'] )
+data_list = [data1, data2, data1]
+loader = DataLoader(data_list, batch_size=3, follow_batch=['x_s', 'x_t'])
 batch = next(iter(loader))
 
 print(batch.x_s_batch)
