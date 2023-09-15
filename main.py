@@ -5,9 +5,8 @@ import torch_geometric as pyg
 import torchmetrics
 import tqdm
 
-from pairing.data import PairData
-from pairing.data import Dataset
-from pairing.data import loader
+# Pickle needs these imported in this package.
+from pairing.data import PairData, Dataset, loader
 import pairing.data
 import copy
 
@@ -103,7 +102,7 @@ class GCN(torch.nn.Module):
             else:
                 x = self.gcn(x, edge_index)
 
-        pooled = pyg.nn.pool.global_mean_pool(x,batch_index)
+        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch_index),pyg.nn.pool.global_mean_pool(x,batch_index)],dim=1)
         if self.aggr_steps > 0:
             pooled = self.readout(x, index=batch_index)
 
@@ -257,7 +256,7 @@ def generate_params():
 
 
 # do_train({"CONVS":2,"LINEAR":1,"STEPS":3,"LR":2e-5,"DIM":6})
-# do_train({'ARCH':0,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
+# do_train({'ARCH':0,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 0, 'DECAY': 0.05})
 # do_train({'ARCH':1,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
 # do_train({'ARCH':2,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
 for _ in range(30):
