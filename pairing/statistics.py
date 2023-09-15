@@ -13,7 +13,6 @@ def get_y(data):
         ys.append(d.y)
     return torch.stack(ys, dim=0)
 
-
 # Baseline auroc using mean of labels is 0.5
 def baseline():
     auroc = torchmetrics.classification.MultilabelAUROC(
@@ -21,6 +20,7 @@ def baseline():
 
     train_data = pairing.data.Dataset(is_train=True)
     train_y = get_y(train_data)
+    
     pred = train_y.mean(dim=0).unsqueeze(0)
 
     test_data = pairing.data.Dataset(is_train=False)
@@ -56,4 +56,5 @@ def distribution():
 
 
 if __name__ == "__main__":
-    distribution()
+    baseline()
+    # distribution()

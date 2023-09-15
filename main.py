@@ -64,7 +64,7 @@ class GCN(torch.nn.Module):
         self.pad = torch.nn.ZeroPad2d(
             (0, embedding_size - Dataset.num_node_features(), 0, 0))
 
-        self.gcn = self.make_conv(architecture,embedding_size)
+        self.gcn = self.make_conv(architecture,num_linear,embedding_size)
         self.gcn.to(device)
         self.num_convs = num_convs
 
@@ -83,11 +83,11 @@ class GCN(torch.nn.Module):
                                        is_last=True)
         self.post_mp.to(device)
 
-    def make_conv(self, architecture,embedding_size):
+    def make_conv(self, architecture,num_linear,embedding_size):
         if architecture == "GCN":
             return pyg.nn.GCNConv(embedding_size,embedding_size)
         elif architecture == "GIN":
-            return pyg.nn.GINConv(make_sequential(1,embedding_size,embedding_size))
+            return pyg.nn.GINConv(make_sequential(num_linear,embedding_size,embedding_size))
         elif architecture == "NNConv":
             mpfn = make_sequential(1,Dataset.num_edge_features(),embedding_size**2)
             return pyg.nn.NNConv(embedding_size, embedding_size, mpfn)
@@ -216,26 +216,26 @@ def do_train(params):
     writer.close()
 
 
-architectures = ["GCN","GIN"]
+architectures = ["GIN"] 
 
 def generate_params():
     # Hyperparameters for optimization trials
     distributions = {
         # Paper used 540 epochs
         # 'STEPS': scipy.stats.loguniform(1e2, 5e2),
-        'STEPS': scipy.stats.randint(50, 51),
+        'STEPS': scipy.stats.randint(100, 200),
         # Paper uses [1e-5,5e-4] but we will use much larger rates
         # and stop early.
-        'LR': scipy.stats.loguniform(1e-3, 1e-1),
+        'LR': scipy.stats.loguniform(1e-5, 1e-1),
         # Paper uses 200
-        'DIM': scipy.stats.randint(2**5, 2**8),
-        "LINEAR": scipy.stats.randint(1, 4),
-        # From paper
-        "CONVS": scipy.stats.randint(3, 9),
+        'DIM': scipy.stats.randint(2**5, 2**10),
+        "LINEAR": scipy.stats.randint(1, 6),
+        # Paper uses [3,8]
+        "CONVS": scipy.stats.randint(1, 13),
         # Paper uses [1,12]. 0 just uses mean.
-        "AGGR": scipy.stats.randint(0, 4),
+        "AGGR": scipy.stats.randint(0, 13),
         # From paper
-        "DECAY": scipy.stats.loguniform(1e-2, 1),
+        "DECAY": scipy.stats.loguniform(1e-4, .1),
         "ARCH": scipy.stats.randint(0,len(architectures))
     }
     params = dict()

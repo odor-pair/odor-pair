@@ -155,7 +155,7 @@ cython_debug/
 # Webcrawl Cache
 cache/
 
-# Datasets and models
+# Datasets
 *.pt
 
 # PyCharm
