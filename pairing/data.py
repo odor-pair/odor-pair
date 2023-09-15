@@ -122,9 +122,11 @@ def to_pairdata(sm1, sm2, notes, all_notes):
     pd = PairData(x_s=d1["node_feat"].float(),
                   edge_attr_s=d1["edge_feat"].float(),
                   edge_index_s=d1["edge_index"],
+                  smiles_s=sm1,
                   x_t=d2["node_feat"].float(),
                   edge_attr_t=d2["edge_feat"].float(),
                   edge_index_t=d2["edge_index"],
+                  smiles_t=sm2,
                   y=y.float())
     return pd
 

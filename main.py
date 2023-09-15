@@ -207,16 +207,8 @@ def do_train(params):
         loss = do_train_epoch()
         scheduler.step()
         tl = get_test_loss()
-        if tl < best_loss:
-            best = copy.deepcopy(model)
-            best_loss = loss
-            patience = 0
-        else:
-            print(f"Stopping early after {s}")
-            break
         writer.add_scalars('Loss', {'train': loss, 'test': tl}, s)
 
-    model = best
     torch.save(model, f"{log_dir}/model.pt")
     metrics = {"auroc": get_auroc(), "completed": s}
     print(run_name, metrics, params, sep="\n")

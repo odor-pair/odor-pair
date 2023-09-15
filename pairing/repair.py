@@ -1,3 +1,8 @@
+# I accidentally built the dataset without including smiles in the DataPairs
+# I didn't want to rebuild the dataset with new data because that would 
+# break train/test separation and retraining models would cost too much compute
+# This file repairs the dataset to include smiles.
+
 import torch
 # Pickle needs these imported in this package.
 from pairing.data import PairData, Dataset, loader
@@ -45,24 +50,18 @@ train = Dataset(is_train=True)
 test = Dataset(is_train=True)
 
 torch_to_sm = {v:k for k,v in sm_to_torch.items()}
-print(next(iter(torch_to_sm)))
-# print(next(iter(torch_to_sm)).type())
-# print(next(iter(torch_to_sm)).shape)
 
-d = next(iter(train))
-# print(sort_t(d.x_s))
+def repair(dataset,fname):
+    for i,d in tqdm.tqdm(enumerate(dataset),total=len(dataset)):
+        key_s = graph_to_key(d.x_s,d.edge_attr_s)
+        sm_s = torch_to_sm[key_s]
+        d.smiles_s = sm_s
+        
+        key_t = graph_to_key(d.x_t,d.edge_attr_t)
+        sm_t = torch_to_sm[key_t]
+        d.smiles_s = sm_t
 
-# print(tensor_to_key(p))
-# print(tensor_to_key(p) in torch_to_sm)
-# print(len([True for d in train if tensor_to_key(d.x_s) in torch_to_sm]))
-# print(len([True for d in test if tensor_to_key(d.x_s) in torch_to_sm]))
-# print()
-# c = 0
-for i,d in tqdm.tqdm(enumerate(train),total=len(train)):
-    key_s = graph_to_key(d.x_s,d.edge_attr_s)
-    sm_s = torch_to_sm[key_s]
-    d.smiles_s = sm_s
-    
-    key_t = graph_to_key(d.x_t,d.edge_attr_t)
-    sm_t = torch_to_sm[key_t]
-    d.smiles_s = sm_t
+    data_list = [d for d in dataset]
+
+repair(train,pairing.data.train_fname)
+repair(test,pairing.data.test_fname)
