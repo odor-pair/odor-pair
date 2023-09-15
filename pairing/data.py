@@ -70,8 +70,9 @@ def get_pairings():
     all_data = get_all_data()
 
     pairings = collections.defaultdict(set)
-    all_notes = set()
-    all_smiles = set()
+    # Preserving order, but used as sets.
+    all_notes = collections.OrderedDict()
+    all_smiles = collections.OrderedDict()
 
     usable = [
         data for data in all_data
@@ -88,7 +89,7 @@ def get_pairings():
         if data["smiles"] in all_smiles:
             dupes += 1
             continue
-        all_smiles.add(data["smiles"])
+        all_smiles[data["smiles"]] = None
 
         for (other, note) in data["blenders"]:
             if not other in valid:
@@ -98,15 +99,14 @@ def get_pairings():
 
             pair = order_pair(data["smiles"], name_to_smiles[other])
             pairings[pair].add(note)
-            all_notes.add(note)
+            all_notes[note] = None
 
     print(f"Found {dupes} duplicates out of {len(usable)} datapoints.")
     print(f"Pairings per chemical = {len(pairings)/len(usable)}.")
 
-    all_notes = list(all_notes)
     print(f"Found a total of {len(all_notes)} notes.")
 
-    return pairings, all_smiles, all_notes
+    return pairings,  list(all_smiles.keys()),  list(all_notes.keys())
 
 
 def multi_hot(notes, all_notes):
@@ -159,7 +159,7 @@ def build(train_frac, test_frac, limit=None):
         pairings = sorted(pairings.items())
 
     train_smiles, test_smiles = sklearn.model_selection.train_test_split(
-        list(all_smiles), train_size=train_frac, test_size=test_frac)
+        all_smiles, train_size=train_frac, test_size=test_frac)
     train_smiles, test_smiles = set(train_smiles), set(test_smiles)
     assert len(train_smiles.intersection(test_smiles)) == 0
 

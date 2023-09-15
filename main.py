@@ -251,5 +251,6 @@ def generate_params():
 # do_train({'ARCH':0,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 0, 'DECAY': 0.05})
 # do_train({'ARCH':1,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
 # do_train({'ARCH':2,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
-for _ in range(30):
-    do_train(generate_params())
+if __name__ == "__main__":
+    for _ in range(30):
+        do_train(generate_params())

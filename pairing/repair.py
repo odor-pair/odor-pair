@@ -47,7 +47,7 @@ for p in tqdm.tqdm(pairings):
 
 
 train = Dataset(is_train=True)
-test = Dataset(is_train=True)
+test = Dataset(is_train=False)
 
 torch_to_sm = {v:k for k,v in sm_to_torch.items()}
 
@@ -62,6 +62,7 @@ def repair(dataset,fname):
         d.smiles_s = sm_t
 
     data_list = [d for d in dataset]
+    pairing.data.save(data_list,fname)
 
 repair(train,pairing.data.train_fname)
 repair(test,pairing.data.test_fname)
