@@ -16,7 +16,7 @@ In many real world applications, the interactions between molecules is often jus
 
 ![molpair](https://github.com/laurahsisson/odor-pair/assets/10359687/f5a1aec9-4163-4db4-ad20-d62b1189bbc8)
 
-In order to generate a molecule pair datasets, labels for molecule pairs were generated, result in nearly 150k datapoints. This creates a meta-graph, where each node is a molecular graph, and nodes are connected if they work well as blenders.
+In order to generate a molecule pair datasets, labels for molecule pairs were generated, result in more than 160k datapoints. This creates a meta-graph, where each node is a molecular graph, and nodes are connected if they work well as blenders.
 
 In order to ensure train/test separation, the meta-graph is carved into two components with the following requirements:
 Each component must contain datapoints for each label to prevent distributional shift.
@@ -24,7 +24,7 @@ Like other carving problems, the edge-boundary degree should be minimized, as da
 
 Although the dataset contains 109 odor labels, only 33 labels appeared frequently enough (1k pairs) to be included.
 
-Using a randomized carving algorithm, these requirements were met after generating 115939 training data pairs and 3404 test pairs. 
+Using a randomized carving algorithm, these requirements were met after generating 115,939 training pairs and 3,404 test pairs. Unfortunately, this meant that ~47k datapoints had to be discarded.
 
 ## Results
 After many hyperparameter trials, the strongest model achieved a mean auroc of 0.679 across all labels. 
