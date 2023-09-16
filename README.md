@@ -27,8 +27,9 @@ Although the dataset contains 109 odor labels, only 33 labels appeared frequentl
 Using a randomized carving algorithm, these requirements were met after generating 115939 training data pairs and 3404 test pairs. 
 
 ## Results
-After many hyperparameter trials, the strongest model achieved a mean auroc of 0.679 across all labels. The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction achieves a mean auroc of 0.5.
-The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. The hardest label to predict was "amber", though a variety of classes can produce this odor, it is likely to be an under-specific term. When describing perfumes in general, "amber" is an [entire class of odors](https://www.fragrancesoftheworld.com/FragranceWheel), instead of a specific odor.
+After many hyperparameter trials, the strongest model achieved a mean auroc of 0.679 across all labels. 
+The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction (by definition) achieves an auroc of 0.5 for each label.
+The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. The hardest label to predict was "amber", though a variety of classes can produce this odor, it is likely to be an under-specific term. When describing perfumes in general, "amber" is an [entire class of odors](https://www.fragrancesoftheworld.com/FragranceWheel), instead of a specific odor. 
 ![auroc](https://github.com/laurahsisson/odor-pair/assets/10359687/a872a697-7edf-4b7f-a32b-f4018a158212)
 
 ## Room for improvement
@@ -37,3 +38,6 @@ The easiest to predict label was "alliaceous" (garlic) reflecting [previous work
 * Hyperparameter search was done randomly, and with limited compute. Using a hyperparameter optimization package like RayTune could provide better results.
 
 * The training task used was a multilabel classification task, but using a triplet loss task would allow more efficient use of the existing datapoints. In the triplet, the anchor would be randomly sampled from all data pairs, the positive would be a data pair with different constituent molecules but a similar odor label, and the negative would be a data pair with similar molecules structurally but a different odor label.
+
+## Future Work
+For labels that are difficult to predict because of its commonality across multiple structural classes, researchers and perfumers may benefit from using more specific labels specific to each class. "Musk" is one such label, and to determine if splitting it apart into separate and distinct odor words, researchers could task a panel of experts to determine if two molecules both labelled musk come from the same structural class or distinct ones. If the musks from different classes are easily separable, then new words may be called for.
