@@ -19,9 +19,6 @@ torch.manual_seed(42)
 
 auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes())
 
-train = Dataset(is_train=True)
-test = Dataset(is_train=False)
-print(f"Training datapoints = {len(train)}. Test datapoints = {len(test)}.")
 
 device = "cpu"
 
@@ -252,5 +249,8 @@ def generate_params():
 # do_train({'ARCH':1,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
 # do_train({'ARCH':2,'STEPS': 1, 'LR': 1e-3, 'DIM': 100, 'LINEAR': 2, 'CONVS': 5, 'AGGR': 3, 'DECAY': 0.05})
 if __name__ == "__main__":
+    train = Dataset(is_train=True)
+    test = Dataset(is_train=False)
+    print(f"Training datapoints = {len(train)}. Test datapoints = {len(test)}.")
     for _ in range(30):
         do_train(generate_params())

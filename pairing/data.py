@@ -198,6 +198,7 @@ def partition(data_list, train_frac, test_frac, all_smiles):
 def get_all_notes():
     pairings, all_smiles, note_counts = get_pairings()
     all_notes = [n for n, f in note_counts.items() if f > CUTOFF]
+    print(f"Found {len(all_notes)} notes that appeared more than {CUTOFF} times.")
     return all_notes
 
 
