@@ -4,7 +4,7 @@ Proof of concept for predicting odor descriptors for molecular pairs.
 ## Motivation
 I am currently looking for a job applying GNNs to research chemistry. My passion is understanding olfaction and my startup [Smellotron](https://smellotron.com/) applied novel NLP techniques to recommend perfumes to inexperienced costumers through free-text queries. This project stands as a proof concept for further work in this domain, but also showcases my ability to adapt previous research techniques to new domains.
 
-Datasets of well-labeled molecules remain scarce and so novel techniques to more efficiently use the existing datapoints in low data domains lead to much stronger models.
+As a technical motivation: datasets of well-labeled molecules remain scarce and so novel techniques to more efficiently use the existing datapoints in low data domains lead to much stronger models.
 
 
 
