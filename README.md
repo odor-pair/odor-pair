@@ -8,7 +8,7 @@ Datasets of well-labeled molecules remain scarce and so novel techniques to more
 
 
 
-### Dataset
+## Dataset
 Molecular data and odorant label was gathered from an online chemical repository.
 Although the dataset contains only ~2k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors.
 As a result, labels could be constructed for pairs of molecules, generating a dataset of ~150k datapoints.
@@ -22,12 +22,12 @@ Although the dataset contains 109 odor labels, only 33 labels appeared frequentl
 
 Using a randomized carving algorithm, these requirements were met after generating 115939 training data pairs and 3404 test pairs. 
 
-### Results
+## Results
 After many hyperparameter trials, the strongest model achieved an 
 ![auroc](https://github.com/laurahsisson/odor-pair/assets/10359687/a872a697-7edf-4b7f-a32b-f4018a158212)
 
 
-### Room for improvement
+## Room for improvement
 * Graph carving is an established space. Using a more sophisticated algorithm, the number of edges could be minimized, increased the dataset size and also allowing more labels to be preserved.
 * Hyperparameter search was done randomly, and with limited compute. Using a hyperparameter optimization package like RayTune could provide better results.
 * The training task used was a multilabel classification task, but using a triplet loss task would allow more efficient use of the existing datapoints. In the triplet, the anchor would be randomly sampled from all data pairs, the positive would be a data pair with different constituent molecules but a similar odor label, and the negative would be a data pair with similar molecules structurally but a different odor label.
