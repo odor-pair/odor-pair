@@ -27,11 +27,10 @@ Although the dataset contains 109 odor labels, only 33 labels appeared frequentl
 Using a randomized carving algorithm, these requirements were met after generating 115,939 training pairs and 3,404 test pairs. Unfortunately, this meant that ~47k datapoints had to be discarded.
 
 ## Results
-After many hyperparameter trials, the strongest model achieved a mean auroc of 0.679 across all labels. 
+After many hyperparameter trials, the strongest model achieved a mean auroc of 0.800 across all labels. 
 The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction (by definition) achieves an auroc of 0.5 for each label. The model performs well for many labels, but barely above random for others. The model significantly underperforms for one label.
-![aurocs](https://github.com/laurahsisson/odor-pair/assets/10359687/effcb0a0-7423-468c-9a36-2d8b4685c8c8)
-The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. The hardest label to predict was "amber", though a variety of classes can produce this odor, it is likely to be an under-specific term. When describing perfumes in general, "amber" is an [entire class of odors](https://www.fragrancesoftheworld.com/FragranceWheel), instead of a specific odor. 
-![auroc](https://github.com/laurahsisson/odor-pair/assets/10359687/a872a697-7edf-4b7f-a32b-f4018a158212)
+![aurocs](https://github.com/laurahsisson/odor-pair/assets/10359687/c17615c0-57a8-43bb-8ca6-b6c78b221870)
+The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. Unlike in this previous work, our model easily predicted ratings for the odor label "musk", with an auroc of 0.925. The hardest label to predict was "earthy", further research into why different labels are easier or harder to predict based on both the model structure and dataset is necessary.
 
 ## Room for improvement
 * Graph carving is an established space. Using a more sophisticated algorithm, the number of edges could be minimized, increased the dataset size and also allowing more labels to be preserved.
