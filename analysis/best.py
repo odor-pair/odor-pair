@@ -11,10 +11,10 @@ ms = torch.load(f"runs/{best_trial}/model.pt",map_location=torch.device('cpu'))
 # So we build a new model with the same params and then build.
 model = MixturePredictor(embedding_size=832,num_linear=2,num_convs=3,aggr_steps=0,architecture="GIN")
 model.load_state_dict(ms.state_dict())
-test_loader = loader(Dataset(is_train=False), batch_size=128)
-device = "cpu"
 
 def collate_test():
+    device = "cpu"
+    test_loader = loader(Dataset(is_train=False), batch_size=128)
     model.eval()
     preds = []
     ys = []

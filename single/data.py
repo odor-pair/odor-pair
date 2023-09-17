@@ -1,4 +1,4 @@
-from pairing.data import PairData, Dataset, loader
+from pairing.data import PairData
 import pairing.data
 import torch_geometric as pyg
 import tqdm
@@ -13,18 +13,18 @@ test_fname = "testsingles.pt"
 # With very clever dictionary comprehension this could be easier.
 def get_data_s(singles,all_notes,data):
     notes_s = singles[data.smiles_s]
-    y_s = pairing.data.multi_hot(singles[data.smiles_s],all_notes)
-    data_s = pyg.data.Data(x=data.x_s,edge_index=data.edge_index_s,edge_attr=data.edge_attr_s,y=y_s,smiles=data.smiles_s)
+    y = pairing.data.multi_hot(singles[data.smiles_s],all_notes)
+    data_s = pyg.data.Data(x=data.x_s,edge_index=data.edge_index_s,edge_attr=data.edge_attr_s,y=y.float(),smiles=data.smiles_s)
     return data_s
 
 def get_data_t(singles,all_notes,data):
     notes_t = singles[data.smiles_t]
-    y_t = pairing.data.multi_hot(singles[data.smiles_t],all_notes)
-    data_t = pyg.data.Data(x=data.x_t,edge_index=data.edge_index_t,edge_attr=data.edge_attr_t,y=y_t,smiles=data.smiles_t)
+    y = pairing.data.multi_hot(singles[data.smiles_t],all_notes)
+    data_t = pyg.data.Data(x=data.x_t,edge_index=data.edge_index_t,edge_attr=data.edge_attr_t,y=y.float(),smiles=data.smiles_t)
     return data_t
 
 def build_dataset(is_train):
-    pair_data = Dataset(is_train=is_train)
+    pair_data = pairing.data.Dataset(is_train=is_train)
     singles = pairing.data.get_singles()
     all_notes = pairing.data.get_all_notes()
 
@@ -50,6 +50,10 @@ def build_dataset(is_train):
 
     return all_data
 
+def save(data_list, fname):
+    data, slices = pyg.data.InMemoryDataset.collate(data_list)
+    torch.save((data, slices), os.path.join(out_dir, fname))
+
 def build():
     all_notes = pairing.data.get_all_notes()
     singles = pairing.data.get_singles()
@@ -58,13 +62,13 @@ def build():
     test_data_list = build_dataset(False)
 
     print(f"Built train dataset of len = {len(train_data_list)}")
-    pairing.data.save(train_data_list,train_fname)
+    save(train_data_list,train_fname)
 
     print(f"Built test dataset of len = {len(test_data_list)}")
-    pairing.data.save(train_data_list,test_fname)
+    save(test_data_list,test_fname)
 
 # TODO: Refactor this into the pairing.data.Dataset
-class SinglesDataset(pyg.data.InMemoryDataset):
+class Dataset(pyg.data.InMemoryDataset):
     def __init__(self, is_train):
         super().__init__(out_dir)
         if is_train:
@@ -86,5 +90,6 @@ class SinglesDataset(pyg.data.InMemoryDataset):
     def num_edge_features(cls):
         return pairing.data.Dataset.num_edge_features()
 
-build()
+if __name__ == "__main__":
+    build()
 

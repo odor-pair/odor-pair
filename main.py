@@ -91,7 +91,7 @@ class GCN(torch.nn.Module):
         else:
             raise KeyError(f"Received invalid architecture = {architecture}.")
 
-    def forward(self, x, edge_index, edge_attr, batch_index):
+    def forward(self, x, edge_index, edge_attr, batch, *args, **kwargs):
         x = self.pad(x)
         for _ in range(self.num_convs):
             if self.architecture == "NNConv":
@@ -99,9 +99,9 @@ class GCN(torch.nn.Module):
             else:
                 x = self.gcn(x, edge_index)
 
-        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch_index),pyg.nn.pool.global_mean_pool(x,batch_index)],dim=1)
+        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch),pyg.nn.pool.global_mean_pool(x,batch)],dim=1)
         if self.aggr_steps > 0:
-            pooled = self.readout(x, index=batch_index)
+            pooled = self.readout(x, index=batch)
 
         return self.post_mp(pooled)
 
@@ -155,15 +155,15 @@ def do_train(params):
     def do_train_epoch():
         model.train()
         losses = []
-        for batch in train_loader:
-            batch.to(device)
+        for batch_data in train_loader:
+            batch_data.to(device)
             optimizer.zero_grad()
 
-            pred = model(**batch.to_dict())
+            pred = model(**batch_data.to_dict())
 
-            loss = loss_fn(pred, batch.y)
+            loss = loss_fn(pred, batch_data.y)
             loss.backward()
-            losses.append(loss * len(batch.y))
+            losses.append(loss * len(batch_data.y))
 
             optimizer.step()
 
@@ -173,13 +173,13 @@ def do_train(params):
         model.eval()
         preds = []
         ys = []
-        for batch in test_loader:
-            batch.to(device)
+        for batch_data in test_loader:
+            batch_data.to(device)
             with torch.no_grad():
-                pred = model(**batch.to_dict())
+                pred = model(**batch_data.to_dict())
 
             preds.append(pred)
-            ys.append(batch.y)
+            ys.append(batch_data.y)
 
         return torch.cat(preds, dim=0), torch.cat(ys, dim=0)
 

@@ -79,7 +79,7 @@ def get_singles():
     ]
 
     print(len(usable))
-    return {data["smiles"]:data["notes"] for data in usable}
+    return {data["smiles"]:set(data["notes"]) for data in usable}
 
 
 def get_pairings():
