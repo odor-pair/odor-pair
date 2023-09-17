@@ -10,7 +10,7 @@ As a technical motivation: datasets of well-labeled molecules remain scarce and 
 
 ## Dataset
 Molecular data and odorant label was gathered from an online chemical repository.
-Although the dataset contains only ~20k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors resulting in. Because each molecule's page contained many (~5+) recommendations, over 160k datapoints could be generated.
+Although the dataset contains only ~3k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors resulting in. Because each molecule's page contained many (~50+) recommendations, over 160k datapoints could be generated.
 
 In many real world applications, the interactions between molecules is often just as important as the properties of the individual molecules themselves. In this dataset, the molecule pair blends often result in new odors that were not apparent in either molecule alone.
 
@@ -26,17 +26,16 @@ Although the dataset contains 109 odor labels, only 33 labels appeared frequentl
 
 Using a randomized carving algorithm, these requirements were met after generating 115,939 training pairs and 3,404 test pairs. Unfortunately, this meant that ~47k datapoints had to be discarded.
 
+## Results
+After many hyperparameter trials, the strongest model achieved a mean auroc of 0.800 across all labels. 
+The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction (by definition) achieves an auroc of 0.5 for each label. The model performs well for many labels, but barely above random for others. The model significantly underperforms on three labels.
+![aurocs](https://github.com/laurahsisson/odor-pair/assets/10359687/c17615c0-57a8-43bb-8ca6-b6c78b221870)
+The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. Unlike in this previous work, the model easily predicted ratings for the odor label "musk", with an auroc of 0.925. The hardest label to predict was "earthy", further research into why different labels are easier or harder to predict based on both the model structure and dataset is necessary.
 
 ## Transfer Learning
 Although the model was trained on molecule pairs, it is possible to generate embeddings (dim=832) for individual molecular graphs. In order to predict odor labels for individual molecules, embeddings were generated for the 2362 train and 393 test molecules, and then a logistic regression classifier was trained to predict the same 33 odor labels. The logisitic regression modifier achieved a mean auroc of 0.768, demonstrating that the performance transfers quite well from molecule pair to single molecule prediction.
 ![single_aurocs](https://github.com/laurahsisson/odor-pair/assets/10359687/b5f10f5b-3de6-4c99-9a3d-ef819cd58126)
 Unsurprisingly, "alliaceous" remained easy to predict for the model. However, "musk" was the easiest label to predict. Based on the structure of the training routine, where all molecules were contained within a meta-graph, "musky" molecules were often conneced and used together as blenders, resulting in similar model embeddings for each molecule in the pair quite naturally, whereas in single molecule training, the model must overcome the structural differences between different categories of "musky" molecules.
-
-## Results
-After many hyperparameter trials, the strongest model achieved a mean auroc of 0.800 across all labels. 
-The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction (by definition) achieves an auroc of 0.5 for each label. The model performs well for many labels, but barely above random for others. The model significantly underperforms for one label.
-![aurocs](https://github.com/laurahsisson/odor-pair/assets/10359687/c17615c0-57a8-43bb-8ca6-b6c78b221870)
-The easiest to predict label was "alliaceous" (garlic) reflecting [previous work](https://www.biorxiv.org/content/10.1101/2022.09.01.504602v2) which noted that sulfur containing compounds could be easily be assigned this label. Unlike in this previous work, the model easily predicted ratings for the odor label "musk", with an auroc of 0.925. The hardest label to predict was "earthy", further research into why different labels are easier or harder to predict based on both the model structure and dataset is necessary.
 
 ## Room for improvement
 * Given further time, comparisons between the trained model and standard molecular fingerprints would be useful.
