@@ -10,13 +10,13 @@ As a technical motivation: datasets of well-labeled molecules remain scarce and 
 
 ## Dataset
 Molecular data and odorant label was gathered from an online chemical repository.
-Although the dataset contains only ~2k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors.
+Although the dataset contains only ~20k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors resulting in. Because each molecule's page contained many (~5+) recommendations, over 160k datapoints could be generated.
 
 In many real world applications, the interactions between molecules is often just as important as the properties of the individual molecules themselves. In this dataset, the molecule pair blends often result in new odors that were not apparent in either molecule alone.
 
 ![molpair](https://github.com/laurahsisson/odor-pair/assets/10359687/f5a1aec9-4163-4db4-ad20-d62b1189bbc8)
 
-In order to generate a molecule pair datasets, labels for molecule pairs were generated, result in more than 160k datapoints. This creates a meta-graph, where each node is a molecular graph, and nodes are connected if they work well as blenders.
+In order to generate a molecule pair datasets, labels for molecule pairs were generated, creating graph where each node is a molecular, and nodes are connected if they work well as blenders.
 
 In order to ensure train/test separation, the meta-graph is carved into two components with the following requirements:
 Each component must contain datapoints for each label to prevent distributional shift.
