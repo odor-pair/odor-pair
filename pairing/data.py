@@ -69,6 +69,19 @@ def get_all_data():
     return all_data
 
 
+# Data set for predicting odor labels for single molecules
+def get_singles():
+    all_data = get_all_data()
+
+    usable = [
+        data for data in all_data
+        if data["notes"] and data["blenders"] and data["smiles"]
+    ]
+
+    print(len(usable))
+    return {data["smiles"]:data["notes"] for data in usable}
+
+
 def get_pairings():
     all_data = get_all_data()
 
