@@ -248,7 +248,7 @@ def build(train_frac, test_frac, limit=None):
 class Dataset(InMemoryDataset):
 
     def __init__(self, is_train):
-        super().__init__("pairing")
+        super().__init__(out_dir)
         if is_train:
             self.data, self.slices = torch.load(
                 os.path.join(out_dir, train_fname))
