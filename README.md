@@ -6,8 +6,6 @@ I am currently looking for a job applying GNNs to research chemistry. My passion
 
 As a technical motivation: datasets of well-labeled molecules remain scarce and so novel techniques to more efficiently use the existing datapoints in low data domains lead to much stronger models. It stands as a proof concept for further work in this domain.
 
-
-
 ## Dataset
 Molecular data and odorant label was gathered from an online chemical repository.
 Although the dataset contains only ~3k molecules, aromachemical pages contained recommended blenders (molecules that work harmoniously) for specific odors resulting in. Because each molecule's page contained many (~50+) recommendations, over 160k datapoints could be generated.
@@ -26,6 +24,19 @@ Although the dataset contains 109 odor labels, only 33 labels appeared frequentl
 
 Using a randomized carving algorithm, these requirements were met after generating 115,939 training pairs and 3,404 test pairs. Unfortunately, this meant that ~47k datapoints had to be discarded.
 
+## Architecture
+A variety of model architectures were tested using a random hyperparameter. The best architecture was structured as follows:
+* The Graph Isomorphism message passing step (from [“How Powerful are Graph Neural Networks?”](https://arxiv.org/abs/1810.00826)) was selected for the GNN.
+  * The Graph Convolution operator (from [“Semi-supervised Classification with Graph Convolutional Networks”](https://arxiv.org/abs/1609.02907)) and the Kernel-Based Convolutional operator from ([“Neural Message Passing for Quantum Chemistry”](https://arxiv.org/abs/1704.01212)) were also tested, but underperformed compared to the GIN message passing step.
+* The GNN was used for three (3) message passing steps, in order to allow weight-tying between these steps, the molecule embeddings were padded to the hidden layer dimension (D=832).
+  * The update function used was a simple, 2-layer feedforward neural network.
+* The GNN generated embeddings for every atom/node in both molecules across the pair. Graph level readouts were combining the global mean and global add pools across the nodes for each graph.
+  * Set2Set readouts were also tested, but no performance improvement was achieved for the significant computational cost increase.
+* The graph level embeddings for the two molecules were concattened (in arbitrary order), and then another 2-layer feedwork network generated a pair-level embeddings (also of D=832).
+* The final layer predicted logits for all 33 odor labels.
+
+The model was trained for 121 epochs, terminated using early-stopping (patience=0), using an Adam optimizer (lr=2.1x10^-5) with a decaying LR (decay=0.08) across the first 90% of the training. The training routine was adaopted from ([“Neural Message Passing for Quantum Chemistry”](https://arxiv.org/abs/1704.01212)).
+
 ## Results
 After many hyperparameter trials, the strongest model achieved a mean auroc of 0.800 across all labels. 
 The naive 0-R model that uses the frequency of each label across all molecules as the constant prediction (by definition) achieves an auroc of 0.5 for each label. The model performs well for many labels, but barely above random for others. The model significantly underperforms on three labels.
@@ -38,8 +49,6 @@ Although the model was trained on molecule pairs, it is possible to generate emb
 Across every odor label, our model outerperformed standard molecular fingerprints. While the classifier trained on Morgan fingerprints underperformed compared to random guessing, our model performed better than random across all labels. Though the mean auroc was lower for the transfer learning task, the fact that our model failed to beat random in the pair prediction task, while consistently predicting better than random on the single molecule task suggests that the former task is harder than the latter, and that transfer learning is quite effective.
 
 Unsurprisingly, "alliaceous" remained easy to predict for the model. However, "musk" was the easiest label to predict. Based on the structure of the training routine, where all molecules were contained within a meta-graph, "musky" molecules were often conneced and used together as blenders, resulting in similar model embeddings for each molecule in the pair quite naturally, whereas in single molecule training, the model must overcome the structural differences between different categories of "musky" molecules. 
-
-
 
 ## Room for improvement
 * Graph carving is an established space. Using a more sophisticated algorithm, the number of edges could be minimized, increased the dataset size and also allowing more labels to be preserved.
