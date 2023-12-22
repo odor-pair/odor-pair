@@ -101,6 +101,7 @@ def get_pairings():
     valid = set(data["name"] for data in usable)
 
     dupes = 0
+    self_edges = 0
     for data in usable:
         if data["smiles"] in all_smiles:
             dupes += 1
@@ -113,18 +114,22 @@ def get_pairings():
             if note == 'No flavor group found for these':
                 continue
 
+            if data["smiles"] == name_to_smiles[other]:
+                self_edges += 1
+                continue
+
             pair = order_pair(data["smiles"], name_to_smiles[other])
             pairings[pair].add(note)
             if not note in note_counts:
                 note_counts[note] = 0
             note_counts[note] += 1
 
-    print(f"Found {dupes} duplicates out of {len(usable)} datapoints.")
+    print(f"Found {dupes} duplicates and {self_edges} self-edges out of {len(usable)} datapoints.")
     print(f"Pairings per chemical = {len(pairings)/len(usable)}.")
 
     print(f"Found a total of {len(note_counts)} notes.")
 
-    return pairings,  list(all_smiles.keys()),  note_counts
+    return pairings,  list(all_smiles.keys()),  note_counts, name_to_smiles
 
 
 def multi_hot(notes, all_notes):
@@ -209,14 +214,14 @@ def partition(data_list, train_frac, test_frac, all_smiles):
     return train_data_list, test_data_list
 
 def get_all_notes():
-    pairings, all_smiles, note_counts = get_pairings()
+    pairings, all_smiles, note_counts, _ = get_pairings()
     all_notes = [n for n, f in note_counts.items() if f > CUTOFF]
     print(f"Found {len(all_notes)} notes that appeared more than {CUTOFF} times.")
     return all_notes
 
 
 def build(train_frac, test_frac, limit=None):
-    pairings, all_smiles, note_counts = get_pairings()
+    pairings, all_smiles, note_counts, _ = get_pairings()
 
     all_notes = [n for n, f in note_counts.items() if f > CUTOFF]
     print(f"Found {len(all_notes)} notes that appeared more than {CUTOFF} times.")

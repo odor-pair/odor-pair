@@ -26,7 +26,7 @@ def make_dual_chart(pred1,y1,label1,pred2,y2,label2):
     plt.figure(figsize=(15, 3))
     plt.bar(idxs,scores1,width=w,align='edge')
     plt.bar([i+w for i in idxs],scores2,width=w,align='edge')
-    plt.legend([label1,label2])
+    plt.legend([f"{label1} (AUROC={np.mean(scores1):.2f})",f"{label2} (AUROC={np.mean(scores2):.2f})"])
     plt.axhline(y=0.5,color='grey',linestyle='dashed')
     plt.xticks(ticks=idxs,labels=all_notes,rotation=45)
     plt.title("AUROC comparison by Model and Odor Label")
