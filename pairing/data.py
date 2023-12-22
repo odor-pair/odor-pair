@@ -85,7 +85,7 @@ def get_singles():
 def get_pairings():
     all_data = get_all_data()
 
-    pairings = collections.defaultdict(set)
+    pairings = collections.defaultdict(dict)
     note_counts = collections.OrderedDict()
     all_smiles = collections.OrderedDict()
 
@@ -119,7 +119,7 @@ def get_pairings():
                 continue
 
             pair = order_pair(data["smiles"], name_to_smiles[other])
-            pairings[pair].add(note)
+            pairings[pair][note] = ""
             if not note in note_counts:
                 note_counts[note] = 0
             note_counts[note] += 1
@@ -133,7 +133,7 @@ def get_pairings():
 
 
 def multi_hot(notes, all_notes):
-    notes = [n for n in notes if n in all_notes]
+    notes = [n for n in notes.keys() if n in all_notes]
     indices = torch.tensor([all_notes.index(n) for n in notes])
     if len(indices) == 0:
         # Occurs when the notes in the pair were removed due to infrequency.
