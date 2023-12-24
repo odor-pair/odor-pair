@@ -25,7 +25,7 @@ def collate(model,dataset):
     return torch.cat(preds, dim=0).numpy(), torch.cat(ys, dim=0).numpy()
 
 
-def get_train_pred_y():
+def get_test_pred_y():
     train = single.data.Dataset(is_train=True)
     test = single.data.Dataset(is_train=False)
 

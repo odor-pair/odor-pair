@@ -85,7 +85,7 @@ def get_singles():
 def get_pairings():
     all_data = get_all_data()
 
-    pairings = collections.defaultdict(dict)
+    pairings = collections.defaultdict(collections.Counter)
     note_counts = collections.OrderedDict()
     all_smiles = collections.OrderedDict()
 
@@ -119,7 +119,7 @@ def get_pairings():
                 continue
 
             pair = order_pair(data["smiles"], name_to_smiles[other])
-            pairings[pair][note] = ""
+            pairings[pair][note] += 1
             if not note in note_counts:
                 note_counts[note] = 0
             note_counts[note] += 1
