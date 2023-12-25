@@ -19,18 +19,34 @@ def collate(mfpgen,dataset):
     return np.stack(preds, axis=0), np.stack(ys, axis=0)
 
 
-if __name__ == "__main__":
+def get_datasets():
     train = single.data.Dataset(is_train=True)
     test = single.data.Dataset(is_train=False)
 
     mfpgen = analysis.fingerprint.make_mfpgen()
 
-    print("Loading train data")
     train_embed, train_y = collate(mfpgen,train)
-    print("Loading test data")
     test_embed, test_y = collate(mfpgen,test)
 
+    return train_embed, train_y, test_embed, test_y
+
+
+def optimize():
+    train_embed, train_y, test_embed, test_y = get_datasets()
+    best_count, best_score = analysis.fingerprint.optimize_sample(train_embed, train_y, test_embed, test_y, trials=500, replicas=10)
+    print(f"Best count={best_count} w/ score={best_score}")
+    make_chart(count=best_count)
+
+def make_chart(count=None):
+    train_embed, train_y, test_embed, test_y = get_datasets()
+    train_embed, train_y = analysis.fingerprint.make_sample(train_embed, train_y,count)
+    
     pred1,y1 = single.embedding.get_test_pred_y()
     pred2, y2 = analysis.fingerprint.get_test_pred_y(train_embed, train_y, test_embed, test_y)
 
     analysis.auroc.make_dual_chart(pred1,y1,"Our Model",pred2,y2,"Molecular Fingerprints")
+
+if __name__ == "__main__":
+    make_chart(None)
+    
+

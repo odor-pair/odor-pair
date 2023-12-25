@@ -23,6 +23,11 @@ def get_data_t(singles,all_notes,data):
     data_t = pyg.data.Data(x=data.x_t,edge_index=data.edge_index_t,edge_attr=data.edge_attr_t,y=y.float(),smiles=data.smiles_t)
     return data_t
 
+# This is a complicated function, but essentially
+# the goal is to ensure train/test separation along the same lines
+# as the blended pair dataset. As a result, we go through the blended
+# pair dataset, and get the individual notes for each molecule across
+# every pair, separated by train and test.
 def build_dataset(is_train):
     pair_data = pairing.data.Dataset(is_train=is_train)
     singles = pairing.data.get_singles()
@@ -56,7 +61,6 @@ def save(data_list, fname):
 
 def build():
     all_notes = pairing.data.get_all_notes()
-    singles = pairing.data.get_singles()
 
     train_data_list = build_dataset(True)
     test_data_list = build_dataset(False)

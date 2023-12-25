@@ -7,6 +7,10 @@ import analysis.best
 
 import matplotlib.pyplot as plt
 
+def get_score(pred, y):
+    auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes(),average=None)
+    return np.mean(auroc(pred,y.int()).numpy())
+
 # Sorted based on first input
 def make_dual_chart(pred1,y1,label1,pred2,y2,label2):
     all_notes = np.array(pairing.data.get_all_notes())
