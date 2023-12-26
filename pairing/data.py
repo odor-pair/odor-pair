@@ -129,7 +129,7 @@ def get_pairings():
 
     print(f"Found a total of {len(note_counts)} notes.")
 
-    return pairings,  list(all_smiles.keys()),  note_counts, name_to_smiles
+    return pairings, list(all_smiles.keys()), note_counts, name_to_smiles
 
 
 def multi_hot(notes, all_notes):
