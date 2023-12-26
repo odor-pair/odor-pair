@@ -6,9 +6,9 @@ import torch_geometric as pyg
 import torch
 import numpy as np
 import torchmetrics
+import analysis.fingerprint
 import analysis.auroc
 import single.map
-import single.model
 
 def collate(model,dataset):
     loader = pyg.loader.DataLoader(dataset,batch_size=32)
@@ -35,7 +35,7 @@ def get_test_pred_y():
     train_embed, train_y = collate(model,train)
     test_embed, test_y = collate(model,test)
 
-    lgr = single.model.LogitRegression().fit(train_embed,train_y)
+    lgr = analysis.fingerprint.LogitRegression().fit(train_embed,train_y)
 
     tensor_pred = torch.tensor(lgr.predict(test_embed))
     tensor_y = torch.tensor(test_y)

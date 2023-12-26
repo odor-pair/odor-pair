@@ -10,7 +10,7 @@ import random
 import scipy.stats
 import analysis.auroc
 
-class LogitRegression(sklearn.linear_model.LinearRegression):
+class LogitRegression(sklearn.linear_model.RidgeCV):
     EPS = 1e-5
 
     def __init__(self):
