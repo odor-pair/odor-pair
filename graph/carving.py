@@ -3,6 +3,8 @@ import random
 import collections
 import tqdm
 import json
+import graph.stats
+import graph.utils
 
 with open("dataset/full.json") as f:
     full_data = json.load(f)
@@ -107,14 +109,20 @@ def dfs_carving():
 
 best = 0
 best_trn, best_tst = {}, {}
-for i in tqdm.tqdm(range(10000)):
+for i in tqdm.tqdm(range(5000)):
     trn_edges, tst_edges = dfs_carving()
     total = len(trn_edges) + len(tst_edges)
-    if total > best:
-        best = total
+    score = graph.stats.count_nonzero(trn_edges) + graph.stats.count_nonzero(tst_edges)
+    print(f"Made {total:,.0f} w/ score={score:,.0f}")
+
+    if score > best:
+        best = score
         best_trn, best_tst = trn_edges, tst_edges
-    print(best,total)
-print(f"From a total of {len(edges):,} edges, we carved {best:,} edges ({len(best_trn):,} train edges + {len(best_tst):,} test edges), losing {len(edges)-best:,} edges.")
+    print(f"Best = {best:,.0f} w/ {len(best_trn)} and {len(best_tst)}. (Missing {2*len(graph.utils.CANON_NOTES_LIST)-best})")
+
+trn_sim = graph.stats.kl_similarity(best_trn)
+tst_sim = graph.stats.kl_similarity(best_tst)
+print(f"From a total of {len(edges):,} edges, we carved {len(best_trn)+len(best_tst):,} edges ({len(best_trn):,} train edges w/ sim={trn_sim:.2f} + {len(best_tst):,} test edges w/ sim={tst_sim:.2f}), losing {len(edges)-best:,} edges.")
 result = {"train":[list(e) for e in best_trn],"test":[list(e) for e in best_tst]}
 with open("dataset/carving.json","w") as f:
     json.dump(result,f)
