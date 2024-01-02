@@ -45,7 +45,7 @@ def count_nonzero(edges):
     return torch.count_nonzero(freqs)
 
 def live_split():
-    with open("dataset/old/carving.json") as f:
+    with open("dataset/old/by_stats.json") as f:
         carving = json.load(f)
 
     train_edges = carving["train"]
