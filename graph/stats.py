@@ -61,10 +61,10 @@ def live_split():
     failed = 0
     for n, ff, trnf, tstf in list(zip(graph.utils.CANON_NOTES_LIST,full_freq.numpy(),get_note_frequencies(train_edges).numpy(),get_note_frequencies(test_edges).numpy())):
         assert ff
-
-        if trnf < 1 or tstf < 1:
-            print(f"{n} w/ {ff:.0f}. Appears in train {trnf:.0f} and test {tstf:.0f}")
-            failed += 1
+        print(n,ff)
+        # if trnf < 1 or tstf < 1:
+        #     print(f"{n} w/ {ff:.0f}. Appears in train {trnf:.0f} and test {tstf:.0f}")
+        #     failed += 1
 
     print(f"Out of {len(graph.utils.CANON_NOTES_LIST)}, but found {failed} w/o enough data.")
     print(count_nonzero(train_edges))
