@@ -36,9 +36,11 @@ def kl_div(source,target):
     divergence = scipy.special.kl_div(src_nrm,trg_nrm)
     return divergence.sum()
 
+k = 1
+
 def kl_similarity(edges):
     freqs = get_note_frequencies(edges)
-    return np.exp(-kl_div(freqs,full_freq))
+    return np.exp(-k*kl_div(freqs,full_freq))
 
 def count_nonzero(edges):
     freqs = get_note_frequencies(edges)

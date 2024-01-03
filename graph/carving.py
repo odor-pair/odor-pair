@@ -30,8 +30,8 @@ for n1, n2 in edges:
     full_graph[n1].add(n2)
     full_graph[n2].add(n1)
 
-train_fraction = .7
-test_fraction = .3
+train_fraction = .8
+test_fraction = .2
 
 assert train_fraction + test_fraction == 1
 
@@ -61,16 +61,15 @@ class FrontierGraph(object):
 
         assert not self.nodes.intersection(self.frontier)
 
-    def build_edges(self):
-        all_edges = set()
-        for node in self.nodes:
-            for other in full_graph[node]:
-                if not other in self.nodes:
-                    continue
-                all_edges.add(sort(node,other))
-        return all_edges
 
-
+def build_edges(nodes):
+    all_edges = set()
+    for node in nodes:
+        for other in full_graph[node]:
+            if not other in nodes:
+                continue
+            all_edges.add(sort(node,other))
+    return all_edges
 
 def dfs_carving():
     train_start, test_start = random.sample(sorted(nodes),2)
@@ -96,25 +95,37 @@ def dfs_carving():
         train_possible = train_graph.can_expand(test_graph.nodes)
         test_possible = test_graph.can_expand(train_graph.nodes)
 
-    train_edges = train_graph.build_edges()
-    test_edges = test_graph.build_edges()
+    train_edges = build_edges(train_graph.nodes)
+    test_edges = build_edges(test_graph.nodes)
 
     assert not train_graph.nodes.intersection(test_graph.nodes)
     assert not train_edges.intersection(test_edges)
     
-    return train_edges, test_edges
+    return train_fraction, train_edges, test_edges
 
+def random_split_carving():
+    train_fraction = random.uniform(.5,.9)
+    train_nodes = set(random.sample(sorted(nodes),int(len(nodes)*train_fraction)))
+    test_nodes = nodes.difference(train_nodes)
+    
+    train_edges = build_edges(train_nodes)
+    test_edges = build_edges(test_nodes)
 
+    assert not train_nodes.intersection(test_nodes)
+    assert not train_edges.intersection(test_edges)
+    
+    return train_fraction, train_edges, test_edges
 
 best = 0
 best_trn, best_tst = {}, {}
-for i in tqdm.tqdm(range(2000)):
-    trn_edges, tst_edges = dfs_carving()
-    total = len(trn_edges) + len(tst_edges)
+for i in tqdm.tqdm(range(100)):
+    tf, trn_edges, tst_edges = random_split_carving()
     s1 = graph.stats.kl_similarity(trn_edges)
     s2 = graph.stats.kl_similarity(tst_edges)
-    score = total * s1 * s2
-    print(f"Made {total:,.0f} w/ score={score:,.1f}. Result {s1:.4f} and {s2:.4f}.")
+    # Although we could do trn * s1 + tst * s2
+    # Both datasets are equally important. 
+    score = (len(trn_edges)+ len(tst_edges)) * s1  * s2
+    print(f"Made {len(trn_edges)+len(tst_edges):,.0f} ({tf:.2f} = {len(trn_edges):,.0f} + {1-tf:.2f} = {len(tst_edges):,.0f}) w/ score={score:,.1f}, losing {len(edges)-(len(trn_edges)+len(tst_edges)):,.0f} edges. Result {s1:.4f} and {s2:.4f}.")
 
     if score > best:
         best = score
