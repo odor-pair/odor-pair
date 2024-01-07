@@ -89,6 +89,9 @@ def make_dataset(edges):
 
 for i, (fold_train, fold_test) in enumerate(cross_validation_folds):
     covered = get_covered_notes(fold_train).intersection(get_covered_notes(fold_test))
+    # "covered_notes" only has notes that appear in both the train and test dataset
+    # There may be notes that appear only in the train or only in the test dataset
+    # so they are not in covered notes. Also, it may not be the case that a datapoint has any notes in covered notes.
     result = {"train":make_dataset(fold_train),"test":make_dataset(fold_test),"covered_notes":sorted(list(covered))}
     with open(f"dataset/folds/fold{i}.json","w") as f:
         json.dump(result,f)

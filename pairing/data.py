@@ -12,6 +12,8 @@ import json
 import collections
 import random
 
+from rdkit import RDLogger                                                                                                                                                               
+RDLogger.DisableLog('rdApp.*')
 
 # The ordering of the graphs in this is arbitrary (alphabetically based on SMILES)
 # but the logistic predictor does rely on this ordering.
@@ -46,12 +48,18 @@ def order_pair(sm1, sm2):
         return (sm2, sm1)
 
 
+smiles_to_graph = dict()
+
 def to_torch(smiles):
-    graph = smiles2graph(smiles)
-    tensor_keys = ["edge_index", 'edge_feat', 'node_feat']
-    for key in tensor_keys:
-        graph[key] = torch.tensor(graph[key])
-    return graph
+    global smiles_to_graph
+    if not smiles in smiles_to_graph:
+        graph = smiles2graph(smiles)
+        tensor_keys = ["edge_index", 'edge_feat', 'node_feat']
+        for key in tensor_keys:
+            graph[key] = torch.tensor(graph[key])
+        smiles_to_graph[smiles] = graph
+    
+    return smiles_to_graph[smiles]
 
 
 def get_all_data():

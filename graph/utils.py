@@ -68,3 +68,4 @@ if __name__ == "__main__":
     for d in full_data:
         all_notes.update(d["blend_notes"])
     print(sorted(all_notes))
+    print(CANON_NOTES_LIST)
