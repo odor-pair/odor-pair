@@ -89,7 +89,7 @@ def make_chart_from_dictionary(note_to_score):
         axs[i].tick_params(axis='x', rotation=45)
         axs[i].set_ylim(0,1)
     
-    plt.suptitle("AUROC by Odor Label")
+    plt.suptitle("AUROC by Blended Pair Odor Label for MFP ")
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.75)
     plt.show()
