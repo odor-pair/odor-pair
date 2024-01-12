@@ -8,6 +8,11 @@ import analysis.best
 import matplotlib.pyplot as plt
 
 COUNT_PER_ROW = 26
+# If we have less than this number of datapoints,
+# we italicize
+TRAIN_LIM = 10
+TEST_LIM = 2
+
 
 def get_score(pred, y):
     auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes(),average=None)
@@ -69,11 +74,20 @@ def make_chart(pred,y):
     plt.tight_layout()
     plt.show()
 
-def make_chart_from_dictionary(note_to_score):
+def make_chart_from_dictionary(note_to_score, train_frequencies, test_frequencies):
     notes = np.array(list(note_to_score.keys()))
     scores = np.array(list(note_to_score.values()))
-    print(notes)
-    print(scores)
+    bad_notes = set()
+
+    for n,f in train_frequencies.items():
+        if f < TRAIN_LIM:
+            bad_notes.add(n)
+
+    # for n,f in test_frequencies.items():
+    #     if f < TEST_LIM:
+    #         bad_notes.add(n)
+
+    print(bad_notes)
     
     idcs = np.flip(np.argsort(scores))
     scores = scores[idcs]
@@ -88,6 +102,14 @@ def make_chart_from_dictionary(note_to_score):
         axs[i].axhline(y=0.5,color='grey',linestyle='dashed')
         axs[i].tick_params(axis='x', rotation=45)
         axs[i].set_ylim(0,1)
+
+
+        for ticklabel in axs[i].get_xticklabels():
+            idx = ticklabel._x
+            note = notes[idx]
+            if note in bad_notes:
+                ticklabel.set_fontweight('bold')
+                # ticklabel.set_color('r')
     
     plt.suptitle("AUROC by Blended Pair Odor Label for MFP ")
     plt.tight_layout()

@@ -23,15 +23,21 @@ def get_baseline_score(fold_datasets):
 
     return {note:np.mean(scores) for note, scores in notes_to_scores.items()}
 
-def compare_models():
+def compare_models(use_multiple_folds=False):
     start = time.perf_counter()
-    fold_datasets = graph.folds.load_fold_datasets()
+    if use_multiple_folds:
+        fold_datasets = graph.folds.load_fold_datasets()
+    else:
+        fold_datasets = graph.folds.load_single_fold()
     print(f"Loaded dataset in {time.perf_counter()-start:.1f}")
-    note_to_score = get_baseline_score(fold_datasets)
+    note_to_score = {'acidic': 0.94404584, 'alcoholic': 0.93257785, 'aldehydic': 0.81184626, 'alliaceous': 0.70352423, 'amber': 0.8645878, 'animal': 0.85070544, 'anise': 0.85907114, 'aromatic': 0.39118046, 'balsamic': 0.78261554, 'berry': 0.8071169, 'bitter': 0.5778024, 'bready': 0.30419004, 'brown': 0.53877926, 'burnt': 0.3027718, 'buttery': 0.82760674, 'camphoreous': 0.72009975, 'caramellic': 0.6871636, 'cheesy': 0.98356014, 'chemical': 0.07104282, 'chocolate': 0.9734151, 'citrus': 0.6302929, 'clean': 0.6637347, 'cocoa': 0.29191083, 'coconut': 0.9104239, 'coffee': 0.8831153, 'cooling': 0.58075666, 'coumarinic': 0.37027624, 'creamy': 0.56295085, 'dairy': 0.12101512, 'earthy': 0.43979374, 'estery': 0.37520128, 'ethereal': 0.61340153, 'fatty': 0.5691519, 'fermented': 0.6206701, 'floral': 0.6764056, 'fresh': 0.92440003, 'fruity': 0.6861677, 'fungal': 0.3814531, 'fusel': 0.48335287, 'green': 0.656567, 'herbal': 0.6152357, 'honey': 0.8776704, 'jammy': 0.4876382, 'licorice': 0.7828236, 'marine': 0.44851583, 'meaty': 0.6492507, 'medicinal': 0.6637752, 'melon': 0.850806, 'mentholic': 0.62330437, 'minty': 0.71491694, 'mossy': 0.93572277, 'musk': 0.80527997, 'mustard': 0.42574495, 'musty': 0.48075286, 'nutty': 0.5825912, 'oily': 0.7669942, 'onion': 0.5315418, 'orris': 0.44660679, 'phenolic': 0.5361419, 'pine': 0.22661729, 'powdery': 0.5620614, 'roasted': 0.5846187, 'rummy': 0.4662616, 'soapy': 0.47403157, 'solvent': 0.57658935, 'sour': 0.80184096, 'spicy': 0.6675265, 'sulfurous': 0.8201014, 'sweet': 0.65269506, 'thujonic': 0.97590184, 'tonka': 0.38637573, 'tropical': 0.45148665, 'vanilla': 0.96550703, 'vegetable': 0.5568697, 'waxy': 0.611503, 'winey': 0.6989641, 'woody': 0.7555574}
+    # note_to_score = get_baseline_score(fold_datasets)
     print(note_to_score)
-    analysis.auroc.make_chart_from_dictionary(note_to_score)
+    # If we go back to using folds, we will have to change the way we calculate
+    # low data notes,
+    analysis.auroc.make_chart_from_dictionary(note_to_score,fold_datasets[0]["train_frequencies"],fold_datasets[0]["test_frequencies"])
 
-# compare_models()
-nts = {'acidic': 0.9345935, 'alcoholic': 0.8206077, 'aldehydic': 0.80087095, 'alliaceous': 0.60822153, 'amber': 0.7830501, 'animal': 0.8824658, 'anise': 0.8494186, 'aromatic': 0.44208512, 'balsamic': 0.7311323, 'berry': 0.7812042, 'bitter': 0.38841033, 'bready': 0.294824, 'brown': 0.5368073, 'burnt': 0.62852734, 'buttery': 0.8179924, 'camphoreous': 0.6082048, 'caramellic': 0.70113546, 'cheesy': 0.9735174, 'chemical': 0.5222834, 'chocolate': 0.70166534, 'citrus': 0.6151182, 'clean': 0.6141081, 'cocoa': 0.48996493, 'coconut': 0.61591697, 'coffee': 0.8428262, 'cooling': 0.46033087, 'coumarinic': 0.5808179, 'creamy': 0.6434711, 'earthy': 0.5137241, 'estery': 0.5673819, 'ethereal': 0.4907577, 'fatty': 0.6381226, 'fermented': 0.49508694, 'floral': 0.65329367, 'fresh': 0.85226965, 'fruity': 0.66087127, 'fungal': 0.28057453, 'fusel': 0.6428997, 'green': 0.5817153, 'herbal': 0.55976295, 'honey': 0.782136, 'licorice': 0.74124706, 'marine': 0.69823045, 'meaty': 0.8392119, 'medicinal': 0.5252871, 'melon': 0.71838874, 'mentholic': 0.8375193, 'minty': 0.5980165, 'mossy': 0.9480268, 'musk': 0.9102171, 'musty': 0.5083849, 'nutty': 0.68002397, 'oily': 0.6327002, 'onion': 0.75001746, 'orris': 0.39034912, 'phenolic': 0.68468064, 'powdery': 0.8427431, 'roasted': 0.58141506, 'rummy': 0.38243127, 'soapy': 0.58446413, 'sour': 0.7281835, 'spicy': 0.64259917, 'sulfurous': 0.7760914, 'sweet': 0.46166328, 'thujonic': 0.95023966, 'tonka': 0.3652207, 'tropical': 0.5347624, 'vanilla': 0.9492879, 'vegetable': 0.63725525, 'waxy': 0.67733717, 'winey': 0.55040175, 'woody': 0.6973284, 'jammy': 0.17729035, 'mustard': 0.8279638, 'pine': 0.37027118, 'solvent': 0.39667854, 'dairy': 0.35186687}
-analysis.auroc.make_chart_from_dictionary(nts)
+compare_models()
+# nts = 
+# analysis.auroc.make_chart_from_dictionary(nts)
 
