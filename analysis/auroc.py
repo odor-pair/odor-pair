@@ -106,8 +106,9 @@ def make_chart_from_dictionary(note_to_score, train_frequencies, test_frequencie
 
         for ticklabel in axs[i].get_xticklabels():
             idx = ticklabel._x
-            note = notes[idx]
+            note = notes[sidx:eidx][idx]
             if note in bad_notes:
+                print(note,train_frequencies[note])
                 ticklabel.set_fontweight('bold')
                 # ticklabel.set_color('r')
     
