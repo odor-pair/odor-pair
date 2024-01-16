@@ -112,7 +112,7 @@ def make_chart_from_dictionary(note_to_score, train_frequencies, test_frequencie
                 ticklabel.set_fontweight('bold')
                 # ticklabel.set_color('r')
     
-    plt.suptitle("AUROC by Blended Pair Odor Label for MFP ")
+    plt.suptitle(f"AUROC by Blended Pair Odor Label for MFP (AUROC={np.mean(scores):.2f})")
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.75)
     plt.show()
