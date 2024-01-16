@@ -271,7 +271,7 @@ class Dataset(InMemoryDataset):
 
     @classmethod
     def num_classes(cls):
-        return 33
+        return 77
 
     @classmethod
     def num_node_features(cls):

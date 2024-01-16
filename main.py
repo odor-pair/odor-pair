@@ -91,7 +91,7 @@ class GCN(torch.nn.Module):
         else:
             raise KeyError(f"Received invalid architecture = {architecture}.")
 
-    def forward(self, x, edge_index, edge_attr, batch, *args, **kwargs):
+    def forward(self, x, edge_index, edge_attr, batch_index):
         x = self.pad(x)
         for _ in range(self.num_convs):
             if self.architecture == "NNConv":
@@ -99,10 +99,9 @@ class GCN(torch.nn.Module):
             else:
                 x = self.gcn(x, edge_index)
 
-        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch),pyg.nn.pool.global_mean_pool(x,batch)],dim=1)
+        pooled = torch.cat([pyg.nn.pool.global_add_pool(x,batch_index),pyg.nn.pool.global_mean_pool(x,batch_index)],dim=1)
         if self.aggr_steps > 0:
-            pooled = self.readout(x, index=batch)
-
+            pooled = self.readout(x, index=batch_index)
         return self.post_mp(pooled)
 
 

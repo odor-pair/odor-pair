@@ -74,45 +74,67 @@ def make_chart(pred,y):
     plt.tight_layout()
     plt.show()
 
-def make_chart_from_dictionary(note_to_score, train_frequencies, test_frequencies):
-    notes = np.array(list(note_to_score.keys()))
-    scores = np.array(list(note_to_score.values()))
+# Sort based on the first passeed in dictionary
+def make_chart_from_dictionary(all_note_to_scores, all_model_names, train_frequencies, test_frequencies):
+    assert len(all_note_to_scores) == len(all_model_names)
+
+    num_models = len(all_model_names)
+
+
+    all_notes = [np.array(list(note_to_score.keys())) for note_to_score in all_note_to_scores]
+    all_scores = [np.array(list(note_to_score.values())) for note_to_score in all_note_to_scores]
+    
+    for notes in all_notes:
+        # Should all be the same set/ordering of notes
+        assert np.all(notes == all_notes[0])
+
     bad_notes = set()
 
     for n,f in train_frequencies.items():
         if f < TRAIN_LIM:
             bad_notes.add(n)
 
-    # for n,f in test_frequencies.items():
-    #     if f < TEST_LIM:
-    #         bad_notes.add(n)
+    for n,f in test_frequencies.items():
+        if f < TEST_LIM:
+            bad_notes.add(n)
 
-    print(bad_notes)
+    sort_index = np.flip(np.argsort(all_scores[0]))
+    all_scores = [scores[sort_index] for scores in all_scores]
     
-    idcs = np.flip(np.argsort(scores))
-    scores = scores[idcs]
-    notes = notes[idcs]
-    
+    notes = all_notes[0][sort_index]
+
+    idxs = [i for i in range(len(notes))]
+
+    # Slight margin between bars
+    w = (1 / num_models) - .1
+
     num_rows = int(len(notes)/COUNT_PER_ROW) + 1
     f,axs = plt.subplots(num_rows,figsize=(12, 2.5*num_rows))
     for i in range(num_rows):
         sidx = i * COUNT_PER_ROW
         eidx = (i + 1) * COUNT_PER_ROW
-        axs[i].bar(notes[sidx:eidx],scores[sidx:eidx],align='edge')
+
+        for midx in range(num_models):
+            bar_idxs = [i+w*midx for i in idxs]
+            axs[i].bar(bar_idxs[sidx:eidx],all_scores[midx][sidx:eidx],width=w,align='edge',label=all_model_names[midx])
+
+        axs[i].set_xticks(ticks=idxs[sidx:eidx],labels=notes[sidx:eidx])
         axs[i].axhline(y=0.5,color='grey',linestyle='dashed')
         axs[i].tick_params(axis='x', rotation=45)
         axs[i].set_ylim(0,1)
 
 
         for ticklabel in axs[i].get_xticklabels():
-            idx = ticklabel._x
-            note = notes[sidx:eidx][idx]
+            note = ticklabel.get_text() 
             if note in bad_notes:
                 print(note,train_frequencies[note])
                 ticklabel.set_fontweight('bold')
-                # ticklabel.set_color('r')
-    
-    plt.suptitle(f"AUROC by Blended Pair Odor Label for MFP (AUROC={np.mean(scores):.2f})")
+
+    handles, labels = axs[-1].get_legend_handles_labels()
+    legend_labels = [f"{model_name} (AUROC={np.mean(all_scores[i]):.2f})" for i,model_name in enumerate(all_model_names)]
+    legend = plt.figlegend(handles, legend_labels, loc='upper right')
+
+    plt.suptitle("AUROC Comparison on Blended Pair Task by Model and Odor Label")
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.75)
     plt.show()
