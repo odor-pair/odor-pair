@@ -14,8 +14,8 @@ CANONIZE_DICTIONARY = {
 full_canonize.update(CANONIZE_DICTIONARY)
 
 # # If you want to try carving all notes, you can comment this section.
-# FAILED_TO_CARVE = {n:None for n in ['acetic', 'ammoniacal', 'cabbage', 'celery', 'cherry', 'corn', 'dusty', 'eggy', 'fishy', 'garlic', 'hay', 'juicy', 'lactonic', 'leathery', 'malty', 'moldy', 'mushroom', 'peach', 'potato', 'pungent', 'rooty', 'salty', 'smoky', 'tarragon', 'toasted', 'tobacco', 'tomato']}
-# full_canonize.update(FAILED_TO_CARVE)
+FAILED_TO_CARVE = {n:None for n in ['acetic', 'ammoniacal', 'cabbage', 'celery', 'cherry', 'corn', 'dusty', 'eggy', 'fishy', 'garlic', 'hay', 'juicy', 'lactonic', 'leathery', 'malty', 'moldy', 'mushroom', 'peach', 'potato', 'pungent', 'rooty', 'salty', 'smoky', 'tarragon', 'toasted', 'tobacco', 'tomato']}
+full_canonize.update(FAILED_TO_CARVE)
 
 def canonize_note(note):
     while note in full_canonize:

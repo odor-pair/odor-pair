@@ -56,6 +56,30 @@ def random_split_carving():
     
     return train_edges, test_edges
 
+def random_split_triple_carving(trnf,tstf,vldf):
+    assert trnf + tstf + vldf == 1
+    shuffled_nodes = list(random.sample(sorted(all_nodes), len(all_nodes)))
+
+    trns, tsts, vlds = int(trnf * len(all_nodes)), int(tstf * len(all_nodes)), int(vldf * len(all_nodes))
+
+    train_nodes = set(shuffled_nodes[:trns])
+    test_nodes = set(shuffled_nodes[trns:trns+tsts])
+    validate_nodes = set(shuffled_nodes[trns+tsts:])
+
+    train_edges = build_edges(train_nodes)
+    test_edges = build_edges(test_nodes)
+    validate_edges = build_edges(validate_nodes)
+
+    assert not train_nodes.intersection(test_nodes)
+    assert not train_nodes.intersection(validate_nodes)
+    assert not test_nodes.intersection(validate_nodes)
+
+    assert not train_edges.intersection(test_edges)
+    assert not train_edges.intersection(validate_edges)
+    assert not test_edges.intersection(validate_edges)
+    
+    return train_edges, test_edges, validate_edges
+
 def get_covered_notes(edges):
     covered = set()
     for edge in edges:
@@ -95,32 +119,67 @@ def make_full_coverage_folds():
         with open(f"dataset/folds/fold{i}.json","w") as f:
             json.dump(result,f)
 
-def find_single_fold():
+def make_full_coverage_triple_folds():
+    best_cross_validation_folds = None
+    for attempt in range(500):
+        folds = []
+        all_covered = set()
+        missing = graph.utils.missing_notes(all_covered)
+        best = len(missing)
+        all_seen = set()
+        while len(all_seen) < 68:
+            trn_edges, tst_edges, vld_edges = random_split_triple_carving(.5,.25,.25)
+            all_covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges)).intersection(get_covered_notes(vld_edges))
+            missing = graph.utils.missing_notes(all_covered)
+            best = min(best,len(missing))
+            all_seen.update(all_covered)
+            # print(i,"Current",len(missing),"Best",best,"All Seen",len(all_seen))
+            folds.append((trn_edges, tst_edges, vld_edges,all_covered))
+
+        if not best_cross_validation_folds or len(folds) < len(best_cross_validation_folds):
+            best_cross_validation_folds = folds
+
+        print(f"Finished attempt {attempt} after {len(folds)} folds. Best is {len(best_cross_validation_folds)}")
+
+    for i, (fold_train, fold_test, fold_validate, fold_all_covered) in enumerate(best_cross_validation_folds):
+        # "covered_notes" only has notes that appear in all datasets.
+        # There may be notes that appear only in the train or only in the test dataset
+        # so they are not in covered notes. Also, it may not be the case that a datapoint has any notes in covered notes.
+        result = {"train":make_dataset(fold_train),"test":make_dataset(fold_test),"validate":make_dataset(fold_validate),"covered_notes":sorted(list(fold_all_covered))}
+        with open(f"dataset/folds/fold{i}.json","w") as f:
+            json.dump(result,f)
+
+def find_single_triple_fold():
     all_covered = set()
     missing = graph.utils.missing_notes(all_covered)
     i = 0
     best = len(missing)
+    all_seen = set()
     while missing:
-        trn_edges, tst_edges = random_split_carving()
-        all_covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges))
+        trn_edges, tst_edges, vld_edges = random_split_triple_carving(.5,.25,.25)
+        all_covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges)).intersection(get_covered_notes(vld_edges))
         missing = graph.utils.missing_notes(all_covered)
-        best = min(best,len(missing))
-        print(i,"Current",len(missing),"Best",best)
+        best = max(best,len(missing))
+        all_seen.update(all_covered)
+        print(i,"Current",len(missing),"Best",best,"All Seen",len(all_seen))
         i+=1
 
-    result = {"train":make_dataset(trn_edges),"test":make_dataset(tst_edges),"covered_notes":sorted(list(all_covered))}
-    with open(f"dataset/single_fold2.json","w") as f:
+    result = {"train":make_dataset(trn_edges),"test":make_dataset(tst_edges),"validate":make_dataset(vld_edges),"covered_notes":sorted(list(all_covered))}
+    with open(f"dataset/triple_fold.json","w") as f:
         json.dump(result,f)
 
-all_covered = set()
-i = 0
-missing = graph.utils.missing_notes(all_covered)
-while i < 1000000:
-    trn_edges, tst_edges = random_split_carving()
-    covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges))
-    all_covered.update(covered)
+def attempt_full_coverage():
+    all_covered = set()
+    i = 0
     missing = graph.utils.missing_notes(all_covered)
-    print(f"{i} = Covered: {len(all_covered)}. Missing ({len(missing)}): {missing}")
-    i+=1
+    while i < 1000000:
+        trn_edges, tst_edges = random_split_carving()
+        covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges))
+        all_covered.update(covered)
+        missing = graph.utils.missing_notes(all_covered)
+        print(f"{i} = Covered: {len(all_covered)}. Missing ({len(missing)}): {missing}")
+        i+=1
 
 
+# make_full_coverage_triple_folds()
+find_single_triple_fold()

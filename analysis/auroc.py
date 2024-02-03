@@ -130,9 +130,11 @@ def make_chart_from_dictionary(all_note_to_scores, all_model_names, train_freque
                 print(note,train_frequencies[note])
                 ticklabel.set_fontweight('bold')
 
-    handles, labels = axs[-1].get_legend_handles_labels()
-    legend_labels = [f"{model_name} (AUROC={np.mean(all_scores[i]):.2f})" for i,model_name in enumerate(all_model_names)]
-    legend = plt.figlegend(handles, legend_labels, loc='upper right')
+
+    # Get the handles from any axis
+    handles, _ = axs[-1].get_legend_handles_labels()
+    labels = [f"{model_name} (AUROC={np.mean(all_scores[i]):.2f})" for i,model_name in enumerate(all_model_names)]
+    legend = plt.figlegend(handles, labels, loc='upper right')
 
     plt.suptitle("AUROC Comparison on Blended Pair Task by Model and Odor Label")
     plt.tight_layout()
