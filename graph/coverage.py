@@ -180,6 +180,44 @@ def attempt_full_coverage():
         print(f"{i} = Covered: {len(all_covered)}. Missing ({len(missing)}): {missing}")
         i+=1
 
+def anneal_better_coverage():
+    def get_data(nodes):
+        edges = build_edges(nodes)
+        return edges, get_covered_notes(edges)
+
+    all_covered = set()
+    i = 0
+    train_nodes = set(random.sample(sorted(all_nodes),int(len(all_nodes)*train_fraction)))
+    test_nodes = all_nodes.difference(train_nodes)
+    
+    train_nodes = list(train_nodes)
+    _, train_covered = get_data(train_nodes)
+
+    test_nodes = list(test_nodes)
+    _, test_covered = get_data(test_nodes)
+
+    while i < 1000:
+        x1,x2 = random.choice(train_nodes), random.choice(test_nodes)
+        new_train_nodes = [n for n in train_nodes if n != x1] + [x2]
+        _, new_train_covered = get_data(new_train_nodes)
+
+        new_test_nodes = [n for n in test_nodes if n != x2] + [x1]
+        _, new_test_covered = get_data(new_test_nodes)
+
+        if len(new_train_covered) < len(train_covered):
+            print("Skip",i,x1,x2)
+            continue
+
+        if len(new_test_covered) < len(test_covered):
+            print("Skip",i,x1,x2)
+            continue
+
+        train_nodes, train_covered = new_train_nodes, new_train_covered
+        test_nodes, test_covered = new_test_nodes, new_test_covered
+        print("Swap",i,x1,x2,len(train_covered),len(test_covered))
+        i += 1
+
+
 
 # make_full_coverage_triple_folds()
-find_single_triple_fold()
+anneal_better_coverage()
