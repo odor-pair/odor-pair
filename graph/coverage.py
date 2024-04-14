@@ -11,6 +11,8 @@ with open("dataset/full.json") as f:
 all_edges = set()
 all_nodes = set()
 edge_to_notes = dict()
+node_to_edges = collections.defaultdict(set)
+
 
 for d in full_data:
     edge = graph.utils.sort(d["mol1"],d["mol2"])
@@ -18,7 +20,10 @@ for d in full_data:
     edge_to_notes[edge] = graph.utils.canonize(d["blend_notes"])
 
     all_nodes.add(d["mol1"])
+    node_to_edges[d["mol1"]].add(edge)
+    
     all_nodes.add(d["mol2"])
+    node_to_edges[d["mol2"]].add(edge)
 
 
 for n1, n2 in all_edges:
@@ -181,43 +186,83 @@ def attempt_full_coverage():
         i+=1
 
 def anneal_better_coverage():
+    def build_covered(edges):
+        covered = collections.Counter()
+        for e in edges:
+            covered.update(edge_to_notes[e])
+        return covered
+
     def get_data(nodes):
         edges = build_edges(nodes)
-        return edges, get_covered_notes(edges)
+        return nodes, edges, build_covered(edges)
+
+    def get_relevant_edges(new_nodes,n):
+        edges = node_to_edges[n]
+        return {(n1,n2) for (n1,n2) in edges if n1 in new_nodes and n2 in new_nodes}
+
+    def update_data(nodes,edges,covered,to_add,to_remove):
+        remove_edges = get_relevant_edges(nodes,to_remove)
+        new_nodes = {n for n in nodes if n!=to_remove}
+
+        new_nodes.add(to_add)
+        add_edges = get_relevant_edges(new_nodes,to_add)
+
+        lost = build_covered(remove_edges)
+        gained = build_covered(add_edges)
+
+        new_edges = edges.union(add_edges).difference(remove_edges)
+        new_covered = covered - lost + gained
+        return new_nodes, new_edges, new_covered
 
     all_covered = set()
     i = 0
     train_nodes = set(random.sample(sorted(all_nodes),int(len(all_nodes)*train_fraction)))
     test_nodes = all_nodes.difference(train_nodes)
     
-    train_nodes = list(train_nodes)
-    _, train_covered = get_data(train_nodes)
+    train_nodes, train_edges, train_covered = get_data(train_nodes)
+    test_nodes, test_edges, test_covered = get_data(test_nodes)
 
-    test_nodes = list(test_nodes)
-    _, test_covered = get_data(test_nodes)
+    skip_bad_edge_trade = True
 
-    while i < 1000:
-        x1,x2 = random.choice(train_nodes), random.choice(test_nodes)
-        new_train_nodes = [n for n in train_nodes if n != x1] + [x2]
-        _, new_train_covered = get_data(new_train_nodes)
+    lim = 1000000
+    skipped = 0
+    hits = 0
+    while i < lim:
+        fraction = i/lim
+        covered = set(train_covered.keys()).intersection(set(test_covered.keys()))
+        old_covered = len(covered)
+        if i % 1000 == 0:
+            print("Swap",fraction,f"{skipped/(hits+1):.2f}",len(train_edges),len(test_edges),(len(train_edges)+len(test_edges))/len(all_edges))
+        elif i % 100 == 0:
+            print("Swap",i,len(train_covered),len(test_covered),len(set(train_covered.keys()).intersection(set(test_covered.keys()))))
+        if i % 5000 == 0:
+            print("MISSING",sorted(list(graph.utils.missing_notes(covered))))
 
-        new_test_nodes = [n for n in test_nodes if n != x2] + [x1]
-        _, new_test_covered = get_data(new_test_nodes)
-
-        if len(new_train_covered) < len(train_covered):
-            print("Skip",i,x1,x2)
-            continue
-
-        if len(new_test_covered) < len(test_covered):
-            print("Skip",i,x1,x2)
-            continue
-
-        train_nodes, train_covered = new_train_nodes, new_train_covered
-        test_nodes, test_covered = new_test_nodes, new_test_covered
-        print("Swap",i,x1,x2,len(train_covered),len(test_covered))
         i += 1
+        x1,x2 = random.choice(list(train_nodes)), random.choice(list(test_nodes))
+        new_train_nodes, new_train_edges, new_train_covered = update_data(train_nodes,train_edges,train_covered,x2,x1)
+        new_test_nodes, new_test_edges, new_test_covered = update_data(test_nodes,test_edges,test_covered,x1,x2)
 
+        new_covered = len(set(new_train_covered.keys()).intersection(set(new_test_covered.keys())))
 
+        if new_covered < old_covered:
+            skipped += 1
+            continue
+
+        # if len(new_train_covered) < len(train_covered) or len(new_test_covered) < len(test_covered):
+        #     continue
+
+        # As the fraction approaches 1, this statement becomes true more,
+        # So we skip bad trades more.
+        #  
+        if random.random()/100 < fraction and (len(new_train_edges) < len(train_edges) or len(new_test_edges) < len(test_edges)):
+            skipped += 1
+            continue
+
+        train_nodes, train_edges, train_covered = new_train_nodes, new_train_edges, new_train_covered
+        test_nodes, test_edges, test_covered = new_test_nodes, new_test_edges, new_test_covered
+        hits += 1
+        
 
 # make_full_coverage_triple_folds()
 anneal_better_coverage()

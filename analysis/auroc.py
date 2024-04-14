@@ -80,14 +80,11 @@ def make_chart_from_dictionary(all_note_to_scores, all_model_names, train_freque
 
     num_models = len(all_model_names)
 
-
     all_notes = [np.array(list(note_to_score.keys())) for note_to_score in all_note_to_scores]
-    all_scores = [np.array(list(note_to_score.values())) for note_to_score in all_note_to_scores]
+    all_notes_sets = [set(notes) for notes in all_notes]
+    notes = np.array(list(set.intersection(*all_notes_sets)))
+    all_scores = [np.array([note_to_score[n] for n in notes]) for note_to_score in all_note_to_scores]
     
-    for notes in all_notes:
-        # Should all be the same set/ordering of notes
-        assert np.all(notes == all_notes[0])
-
     bad_notes = set()
 
     for n,f in train_frequencies.items():
@@ -101,7 +98,7 @@ def make_chart_from_dictionary(all_note_to_scores, all_model_names, train_freque
     sort_index = np.flip(np.argsort(all_scores[0]))
     all_scores = [scores[sort_index] for scores in all_scores]
     
-    notes = all_notes[0][sort_index]
+    notes = notes[sort_index]
 
     idxs = [i for i in range(len(notes))]
 
