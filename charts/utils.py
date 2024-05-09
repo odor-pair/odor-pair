@@ -1,4 +1,5 @@
 import os
+import pathlib
 import matplotlib.pyplot as plt
 
 def standard_fig_ax(x=1,y=1):
@@ -6,7 +7,7 @@ def standard_fig_ax(x=1,y=1):
     
 
 def save_figures(filename, fig=None, dpi_list=[300, 600], formats=['jpg', 'svg']):
-    os.mkdir(f'output/{filename}')
+    pathlib.Path(f'output/{filename}').mkdir(parents=True,exist_ok=True)
     if fig is None:
         fig = plt.gcf()
 
