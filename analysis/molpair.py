@@ -28,6 +28,7 @@ def format(name,notes):
 
 # Selected because it has many labels
 d = test[13386]
+print(d)
 
 name1 = "Cyclohexyl formate"
 mol1 = Chem.MolFromSmiles(d.smiles_s)
