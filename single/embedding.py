@@ -9,6 +9,7 @@ import torchmetrics
 import analysis.fingerprint
 import analysis.auroc
 import single.map
+import copy
 
 def collate(model,dataset):
     loader = pyg.loader.DataLoader(dataset,batch_size=32)
@@ -16,7 +17,11 @@ def collate(model,dataset):
     ys = []
     for batch in loader:
         with torch.no_grad():
-            pred = model(**batch.to_dict())
+            expected_keys = ['x', 'edge_index', 'edge_attr', 'batch']
+            filtered_batch = {k: v for k, v in batch.to_dict().items() if k in expected_keys}
+            filtered_batch['batch_index'] = filtered_batch['batch']
+            del filtered_batch['batch']
+            pred = model(**filtered_batch)
 
         preds.append(pred)
         y = batch.y.reshape((len(batch),-1))

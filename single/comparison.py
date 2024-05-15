@@ -42,7 +42,7 @@ def make_chart(count=None):
     train_embed, train_y = analysis.fingerprint.make_sample(train_embed, train_y,count)
     
     pred1,y1 = single.embedding.get_test_pred_y()
-    pred2, y2 = analysis.fingerprint.get_test_pred_y(train_embed, train_y, test_embed, test_y)
+    pred2,y2 = analysis.fingerprint.get_test_pred_y(train_embed, train_y, test_embed, test_y)
 
     analysis.auroc.make_dual_chart("AUROC Comparison on Single Molecule Task by Model and Odor Label",pred1,y1,"Our Model",pred2,y2,"Molecular Fingerprints")
 

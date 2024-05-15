@@ -27,15 +27,22 @@ def make_score_dict(pred,y,covered_notes):
 def make_dual_chart(title,pred1,y1,label1,pred2,y2,label2):
     all_notes = np.array(pairing.data.get_all_notes())
     auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes(),average=None)
+    print(pred1.shape)
+    print(pred2.shape)
+    exit()
     
     scores1 = auroc(pred1,y1.int()).numpy()
     scores2 = auroc(pred2,y2.int()).numpy()
+
     
     idcs = np.flip(np.argsort(scores1))
     scores1 = scores1[idcs]
     scores2 = scores2[idcs]
     all_notes = all_notes[idcs]
     idxs = [i for i in range(len(all_notes))]
+    print(label1,scores1)
+    print(label2,scores2)
+    print(all_notes)
 
     w = .4
 
