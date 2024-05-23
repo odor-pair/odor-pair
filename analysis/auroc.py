@@ -1,5 +1,4 @@
 from main import MixturePredictor, GCN
-from pairing.data import PairData, Dataset, loader
 import pairing.data
 import numpy as np
 import torchmetrics
@@ -15,34 +14,36 @@ TEST_LIM = 2
 
 
 def get_score(pred, y):
-    auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes(),average=None)
+    auroc = torchmetrics.classification.MultilabelAUROC(y.shape[1],average=None)
     return np.mean(auroc(pred,y.int()).numpy())
 
 def make_score_dict(pred,y,covered_notes):
     auroc = torchmetrics.classification.MultilabelAUROC(len(covered_notes),average=None)
     scores = auroc(pred,y.int()).numpy()
-    return dict(zip(covered_notes,scores))
+    score_dict = dict(zip(covered_notes,scores))
+
+    microauroc = torchmetrics.classification.MultilabelAUROC(len(covered_notes),average='micro')
+    score_dict["TOTAL"] = microauroc(pred,y.int()).numpy().item()
+    return score_dict
+
 
 # Sorted based on first input
-def make_dual_chart(title,pred1,y1,label1,pred2,y2,label2):
-    all_notes = np.array(pairing.data.get_all_notes())
-    auroc = torchmetrics.classification.MultilabelAUROC(Dataset.num_classes(),average=None)
-    print(pred1.shape)
-    print(pred2.shape)
-    exit()
-    
+def make_dual_chart(title,pred1,y1,label1,pred2,y2,label2,notes):
+    all_notes = np.array(notes)
+    auroc = torchmetrics.classification.MultilabelAUROC(y1.shape[1],average=None)
     scores1 = auroc(pred1,y1.int()).numpy()
     scores2 = auroc(pred2,y2.int()).numpy()
+    print(label1,make_score_dict(pred1,y1,all_notes))
+    print(label2,make_score_dict(pred2,y2,all_notes))
+    exit()
 
     
     idcs = np.flip(np.argsort(scores1))
     scores1 = scores1[idcs]
     scores2 = scores2[idcs]
     all_notes = all_notes[idcs]
+    
     idxs = [i for i in range(len(all_notes))]
-    print(label1,scores1)
-    print(label2,scores2)
-    print(all_notes)
 
     w = .4
 

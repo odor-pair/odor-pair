@@ -84,7 +84,7 @@ class Dataset(pyg.data.InMemoryDataset):
 
     @classmethod
     def num_classes(cls):
-        return pairing.data.Dataset.num_classes()
+        return 60
 
     @classmethod
     def num_node_features(cls):

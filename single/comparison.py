@@ -1,12 +1,13 @@
 from main import MixturePredictor, GCN
 import single.data
 import single.embedding
-from pairing.data import PairData, Dataset, loader
 import analysis.fingerprint
 import analysis.auroc
 import analysis.best
 import tqdm
 import numpy as np
+
+single_notes = ['aldehydic', 'alliaceous', 'amber', 'animal', 'anise', 'aromatic', 'balsamic', 'berry', 'bitter', 'burnt', 'buttery', 'camphoreous', 'caramellic', 'cheesy', 'chocolate', 'citrus', 'clean', 'cocoa', 'coconut', 'coffee', 'cooling', 'coumarinic', 'creamy', 'dairy', 'earthy', 'ethereal', 'fatty', 'fermented', 'floral', 'fresh', 'fruity', 'green', 'herbal', 'honey', 'meaty', 'medicinal', 'melon', 'minty', 'musk', 'musty', 'nutty', 'oily', 'onion', 'orris', 'phenolic', 'powdery', 'roasted', 'rummy', 'soapy', 'solvent', 'sour', 'spicy', 'sulfurous', 'sweet', 'tropical', 'vanilla', 'vegetable', 'waxy', 'winey', 'woody']
 
 def collate(mfpgen,dataset):
     preds = []
@@ -44,7 +45,7 @@ def make_chart(count=None):
     pred1,y1 = single.embedding.get_test_pred_y()
     pred2,y2 = analysis.fingerprint.get_test_pred_y(train_embed, train_y, test_embed, test_y)
 
-    analysis.auroc.make_dual_chart("AUROC Comparison on Single Molecule Task by Model and Odor Label",pred1,y1,"Our Model",pred2,y2,"Molecular Fingerprints")
+    analysis.auroc.make_dual_chart("AUROC Comparison on Single Molecule Task by Model and Odor Label",pred1,y1,"Our Model",pred2,y2,"Molecular Fingerprints",single_notes)
 
 if __name__ == "__main__":
     make_chart(None)
