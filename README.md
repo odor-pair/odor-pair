@@ -9,6 +9,9 @@ Molecular structures (SMILES) and odorant labels were gathered from the Good Sce
 
 ## Contributors
 *Laura Sisson*, ML Engineer @ Talent.com, United States: dataset preparatation, model development
+
 *Aryan Amit Barsainyan*, National Institute of Technology Karnataka, India: ...
+
 *Mrityunjay Sharma*, Academy of Scientific and Innovative Research, India: 
+
 *Ritesh Kumar*, CSIR-CSIO, Chandigarh, India: ...
