@@ -8,10 +8,10 @@ The contribution of this work is two fold: first, we present a carefully compile
 Molecular structures (SMILES) and odorant labels were gathered from the Good Scents online chemical repository to generate a dataset of aroma-chemical blends. While the Good Scents website cataloged ~3.5k molecules, each aroma-chemical's page provided suggested blends that, when mixed, yielded distinct aromas. The molecule pages often contained more than 50 blender recommendations, enabling us to gather over 160k molecule-pair data points with discrete labels for 109 olfactory notes.
 
 ## Contributors
-*Laura Sisson*, ML Engineer @ Talent.com, United States: dataset preparatation, model development
+**Laura Sisson**, ML Engineer @ Talent.com, United States: dataset preparatation, model development
 
-*Aryan Amit Barsainyan*, National Institute of Technology Karnataka, India: ...
+**Aryan Amit Barsainyan**, National Institute of Technology Karnataka, India: ...
 
-*Mrityunjay Sharma*, Academy of Scientific and Innovative Research, India: 
+**Mrityunjay Sharma**, Academy of Scientific and Innovative Research, India: 
 
-*Ritesh Kumar*, CSIR-CSIO, Chandigarh, India: ...
+**Ritesh Kumar**, CSIR-CSIO, Chandigarh, India: ...
