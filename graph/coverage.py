@@ -176,7 +176,7 @@ def find_single_triple_fold():
 def attempt_full_coverage():
     all_covered = set()
     i = 0
-    missing = graph.utils.missing_notes(all_covered)
+    missing = grCaph.utils.missing_notes(all_covered)
     while i < 1000000:
         trn_edges, tst_edges = random_split_carving()
         covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges))
@@ -224,6 +224,7 @@ def anneal_better_coverage():
 
     skip_bad_edge_trade = True
 
+    # lim = 1000000
     lim = 1000000
     skipped = 0
     hits = 0
@@ -262,7 +263,14 @@ def anneal_better_coverage():
         train_nodes, train_edges, train_covered = new_train_nodes, new_train_edges, new_train_covered
         test_nodes, test_edges, test_covered = new_test_nodes, new_test_edges, new_test_covered
         hits += 1
-        
+
+    train_covered_set = {k for k,v in train_covered.most_common() if v>0}
+    test_covered_set = {k for k,v in test_covered.most_common() if v>0}
+    covered = list(train_covered_set.intersection(test_covered_set))
+    print(len(train_edges),len(test_edges),len(covered))
+    result = {"train":make_dataset(train_edges),"test":make_dataset(test_edges),"covered_notes":covered}
+    with open(f"dataset/annealed.json","w") as f:
+            json.dump(result,f)
 
 # make_full_coverage_triple_folds()
 anneal_better_coverage()
