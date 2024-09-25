@@ -145,7 +145,3 @@ def make_chart_from_dictionary(all_note_to_scores, all_model_names, train_freque
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.75)
     plt.show()
-
-if __name__ == "__main__":
-    pred, y = analysis.best.collate_test()
-    make_chart(pred,y)
