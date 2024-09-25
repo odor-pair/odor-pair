@@ -19,7 +19,3 @@ def get_test_pred_y(train,test):
     tensor_y = torch.tensor(test_y)
 
     return tensor_pred, tensor_y
-
-    # auroc = torchmetrics.classification.MultilabelAUROC(single.data.Dataset.num_classes())
-    # print(auroc(tensor_pred,torch.tensor(tensor_y).int()))
-    # analysis.auroc.make_chart(tensor_pred,tensor_y)
