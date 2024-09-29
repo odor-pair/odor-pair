@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import random
 import scipy.stats
-import analysis.auroc
 
 class LogitRegression(sklearn.linear_model.RidgeCV):
     EPS = 1e-5
@@ -60,11 +59,6 @@ def make_sample(train_embed,train_y,count):
 
     stats = train_y_sample.sum(axis=0)
     return train_embed_sample, train_y_sample
-
-def do_trial(train_embed, train_y, test_embed, test_y, count):
-    trial_train_embed, trial_train_y = make_sample(train_embed,train_y,count)
-    pred, y = get_test_pred_y(trial_train_embed, trial_train_y, test_embed, test_y)
-    return analysis.auroc.get_score(pred,y)
 
 def optimize_sample(train_embed, train_y, test_embed, test_y, trials=100, replicas=3):
     count_distribution = scipy.stats.loguniform(1, len(train_embed))
