@@ -6,7 +6,7 @@ def standard_fig_ax(x=1,y=1):
      return plt.subplots(x,y,figsize=(10,10))
     
 
-def save_figures(filename, fig, dpi_list=[300, 600], formats=['jpg', 'svg']):
+def save_figures(filename, fig, dpi_list=[300], formats=['jpg']):
     pathlib.Path(f'output/{filename}').mkdir(parents=True,exist_ok=True)
     for text in fig.findobj(plt.Text):
         text.set_fontweight('bold')
