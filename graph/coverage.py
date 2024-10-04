@@ -49,8 +49,8 @@ def build_edges(all_nodes):
             all_edges.add(graph.utils.sort(node,other))
     return all_edges
 
-def random_split_carving():
-    train_nodes = set(random.sample(sorted(all_nodes),int(len(all_nodes)*train_fraction)))
+def random_split_carving(tf=train_fraction):
+    train_nodes = set(random.sample(sorted(all_nodes),int(len(all_nodes)*tf)))
     test_nodes = all_nodes.difference(train_nodes)
     
     train_edges = build_edges(train_nodes)
@@ -272,5 +272,6 @@ def anneal_better_coverage():
     with open(f"dataset/annealed.json","w") as f:
             json.dump(result,f)
 
-# make_full_coverage_triple_folds()
-anneal_better_coverage()
+if __name__ == "__main__":
+    # make_full_coverage_triple_folds()
+    anneal_better_coverage()

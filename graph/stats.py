@@ -28,9 +28,10 @@ def print_freqs(freqs):
     for k, f in list(zip(graph.utils.CANON_NOTES_LIST,freqs)):
         print(k,f)
 
-def kl_div(source,target):
-    src_nrm = source/source.sum()
-    trg_nrm = target/target.sum()
+def kl_div(source,target,eps=1e-12):
+    src_nrm = (source + eps) / (source.sum() + eps)
+    trg_nrm = (target + eps) / (target.sum() + eps)
+    
     assert np.isclose(src_nrm.sum(),1)
     assert np.isclose(trg_nrm.sum(),1)
     divergence = scipy.special.kl_div(src_nrm,trg_nrm)
@@ -38,9 +39,14 @@ def kl_div(source,target):
 
 k = 1
 
-def kl_similarity(edges):
+def kl_similarity(edges,target_edges=None):
     freqs = get_note_frequencies(edges)
-    return np.exp(-k*kl_div(freqs,full_freq))
+    if target_edges is None:
+        target_freq = full_freq
+    else:
+        target_freq = get_note_frequencies(target_edges)
+
+    return np.exp(-k*kl_div(freqs,target_freq))
 
 def count_nonzero(edges):
     freqs = get_note_frequencies(edges)
