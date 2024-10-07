@@ -167,4 +167,5 @@ cache/
 #.idea/
 
 *.png
+*.jpg
 *.svg
