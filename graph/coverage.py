@@ -5,8 +5,11 @@ import tqdm
 import json
 import graph.utils
 
-with open("dataset/full.json") as f:
+with open("dataset/full_large.json") as f:
     full_data = json.load(f)
+
+full_data = [d for d in full_data if d["mol1"] and d["mol2"]]
+
 
 all_edges = set()
 all_nodes = set()
@@ -26,9 +29,10 @@ for d in full_data:
     node_to_edges[d["mol2"]].add(edge)
 
 
-for n1, n2 in all_edges:
-    assert not (n2,n1) in all_edges
-    assert not n1 == n2
+
+# for n1, n2 in all_edges:
+#     assert not (n2,n1) in all_edges
+#     assert not n1 == n2
 
 full_graph = collections.defaultdict(set)
 for n1, n2 in all_edges:
@@ -176,7 +180,7 @@ def find_single_triple_fold():
 def attempt_full_coverage():
     all_covered = set()
     i = 0
-    missing = grCaph.utils.missing_notes(all_covered)
+    missing = graph.utils.missing_notes(all_covered)
     while i < 1000000:
         trn_edges, tst_edges = random_split_carving()
         covered = get_covered_notes(trn_edges).intersection(get_covered_notes(tst_edges))
@@ -225,44 +229,43 @@ def anneal_better_coverage():
     skip_bad_edge_trade = True
 
     # lim = 1000000
-    lim = 1000000
+    lim = 100000
     skipped = 0
     hits = 0
-    while i < lim:
-        fraction = i/lim
-        covered = set(train_covered.keys()).intersection(set(test_covered.keys()))
-        old_covered = len(covered)
-        if i % 1000 == 0:
-            print("Swap",fraction,f"{skipped/(hits+1):.2f}",len(train_edges),len(test_edges),(len(train_edges)+len(test_edges))/len(all_edges))
-        elif i % 100 == 0:
-            print("Swap",i,len(train_covered),len(test_covered),len(set(train_covered.keys()).intersection(set(test_covered.keys()))))
-        if i % 5000 == 0:
-            print("MISSING",sorted(list(graph.utils.missing_notes(covered))))
+    with tqdm.tqdm(total=lim) as pbar:
+        while i < lim:
+            fraction = i/lim
+            covered = set(train_covered.keys()).intersection(set(test_covered.keys()))
+            old_covered = len(covered)
+            fraction = (len(train_edges)+len(test_edges))/len(all_edges)
+            i += 1
 
-        i += 1
-        x1,x2 = random.choice(list(train_nodes)), random.choice(list(test_nodes))
-        new_train_nodes, new_train_edges, new_train_covered = update_data(train_nodes,train_edges,train_covered,x2,x1)
-        new_test_nodes, new_test_edges, new_test_covered = update_data(test_nodes,test_edges,test_covered,x1,x2)
+            pbar.update(1)
+            pbar.set_postfix({"Covered":len(covered),"Fraction":fraction})
 
-        new_covered = len(set(new_train_covered.keys()).intersection(set(new_test_covered.keys())))
+            x1,x2 = random.choice(list(train_nodes)), random.choice(list(test_nodes))
+            new_train_nodes, new_train_edges, new_train_covered = update_data(train_nodes,train_edges,train_covered,x2,x1)
+            new_test_nodes, new_test_edges, new_test_covered = update_data(test_nodes,test_edges,test_covered,x1,x2)
 
-        if new_covered < old_covered:
-            skipped += 1
-            continue
+            new_covered = len(set(new_train_covered.keys()).intersection(set(new_test_covered.keys())))
 
-        # if len(new_train_covered) < len(train_covered) or len(new_test_covered) < len(test_covered):
-        #     continue
+            if new_covered < old_covered:
+                skipped += 1
+                continue
 
-        # As the fraction approaches 1, this statement becomes true more,
-        # So we skip bad trades more.
-        #  
-        if random.random()/100 < fraction and (len(new_train_edges) < len(train_edges) or len(new_test_edges) < len(test_edges)):
-            skipped += 1
-            continue
+            # if len(new_train_covered) < len(train_covered) or len(new_test_covered) < len(test_covered):
+            #     continue
 
-        train_nodes, train_edges, train_covered = new_train_nodes, new_train_edges, new_train_covered
-        test_nodes, test_edges, test_covered = new_test_nodes, new_test_edges, new_test_covered
-        hits += 1
+            # As the fraction approaches 1, this statement becomes true more,
+            # So we skip bad trades more.
+            #  
+            if random.random()/100 < fraction and (len(new_train_edges) < len(train_edges) or len(new_test_edges) < len(test_edges)):
+                skipped += 1
+                continue
+
+            train_nodes, train_edges, train_covered = new_train_nodes, new_train_edges, new_train_covered
+            test_nodes, test_edges, test_covered = new_test_nodes, new_test_edges, new_test_covered
+            hits += 1
 
     train_covered_set = {k for k,v in train_covered.most_common() if v>0}
     test_covered_set = {k for k,v in test_covered.most_common() if v>0}

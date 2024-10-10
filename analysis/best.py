@@ -7,7 +7,7 @@ import graph.folds
 
 def get_model():
     best_trial = "9a72dea6"
-    model = MixturePredictor(embedding_size=100,num_linear=2,num_convs=6,aggr_steps=2,architecture="GIN")
+    model = MixturePredictor(embedding_size=100,num_linear=2,num_convs=6,aggr_steps=2,architecture="GIN",num_classes=Dataset.num_classes())
     model.load_state_dict(torch.load(f"runs/{best_trial}/model_state_dict.pt",map_location=torch.device('cpu')))
     model.eval()
     return model

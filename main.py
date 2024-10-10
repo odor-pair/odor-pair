@@ -107,7 +107,7 @@ class GCN(torch.nn.Module):
 
 class MixturePredictor(torch.nn.Module):
 
-    def __init__(self, num_convs, num_linear, embedding_size, aggr_steps, architecture):
+    def __init__(self, num_convs, num_linear, embedding_size, aggr_steps, architecture, num_classes):
         super(MixturePredictor, self).__init__()
 
         self.gcn = GCN(num_convs, num_linear, embedding_size, aggr_steps, architecture)
@@ -115,7 +115,7 @@ class MixturePredictor(torch.nn.Module):
         # sigmoid automatically
         self.out = make_sequential(num_linear,
                                    2 * embedding_size,
-                                   Dataset.num_classes(),
+                                   num_classes,
                                    is_last=True)
 
     def forward(self, x_s, edge_index_s, edge_attr_s, x_s_batch, x_t, edge_index_t,
@@ -133,7 +133,8 @@ def do_train(params):
                              num_linear=params["LINEAR"],
                              embedding_size=int(params["DIM"]),
                              aggr_steps=params["AGGR"],
-                             architecture=architectures[params["ARCH"]])
+                             architecture=architectures[params["ARCH"]],
+                             num_classes=Dataset.num_classes())
     model = model.to(device)
 
     bsz = int((2**14) / (params["DIM"]))
