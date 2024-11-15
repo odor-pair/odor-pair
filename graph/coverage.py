@@ -1,9 +1,14 @@
+import math
 import json
 import random
 import collections
 import tqdm
 import json
 import graph.utils
+
+# Define a maximum allowable exponent to prevent overflow
+MAX_EXPONENT = 709  # Close to the upper limit for math.exp without overflow
+MIN_EXPONENT = -709  # To avoid underflow to 0
 
 with open("dataset/full_large.json") as f:
     full_data = json.load(f)
@@ -39,8 +44,8 @@ for n1, n2 in all_edges:
     full_graph[n1].add(n2)
     full_graph[n2].add(n1)
 
-train_fraction = .5
-test_fraction = .5
+train_fraction = .8
+test_fraction = .2
 
 assert train_fraction + test_fraction == 1
 
@@ -226,22 +231,25 @@ def anneal_better_coverage():
     train_nodes, train_edges, train_covered = get_data(train_nodes)
     test_nodes, test_edges, test_covered = get_data(test_nodes)
 
-    skip_bad_edge_trade = True
-
     # lim = 1000000
-    lim = 100000
+    lim = 50000
+    temperature = 15
+    decay = 0.99995
     skipped = 0
     hits = 0
-    with tqdm.tqdm(total=lim) as pbar:
+
+    print(f"train/test: {train_fraction}/{test_fraction}:, lim: {lim}. temperature: {temperature}. decay:{decay}.")
+    with tqdm.tqdm(total=lim, smoothing=0) as pbar:
         while i < lim:
             fraction = i/lim
             covered = set(train_covered.keys()).intersection(set(test_covered.keys()))
             old_covered = len(covered)
             fraction = (len(train_edges)+len(test_edges))/len(all_edges)
             i += 1
+            temperature *= decay
 
             pbar.update(1)
-            pbar.set_postfix({"Covered":len(covered),"Fraction":fraction})
+            pbar.set_postfix({"Covered":len(covered),"Fraction":fraction,"Temperature":temperature})
 
             x1,x2 = random.choice(list(train_nodes)), random.choice(list(test_nodes))
             new_train_nodes, new_train_edges, new_train_covered = update_data(train_nodes,train_edges,train_covered,x2,x1)
@@ -253,15 +261,21 @@ def anneal_better_coverage():
                 skipped += 1
                 continue
 
-            # if len(new_train_covered) < len(train_covered) or len(new_test_covered) < len(test_covered):
-            #     continue
 
-            # As the fraction approaches 1, this statement becomes true more,
-            # So we skip bad trades more.
-            #  
-            if random.random()/100 < fraction and (len(new_train_edges) < len(train_edges) or len(new_test_edges) < len(test_edges)):
-                skipped += 1
-                continue
+             # Check if the new configuration results in fewer edges
+            delta = (len(new_train_edges) - len(train_edges)) + (len(new_test_edges) - len(test_edges))
+            if delta < 0: 
+                # Calculate the exponent and cap it
+                exponent = delta / temperature  # delta is negative here
+                exponent = max(min(exponent, MAX_EXPONENT), MIN_EXPONENT)
+
+                # Calculate the acceptance probability with the capped exponent
+                acceptance_prob = math.exp(exponent)
+
+                # Decide whether to continue based on acceptance probability
+                if random.random() > acceptance_prob:
+                    skipped += 1
+                    continue
 
             train_nodes, train_edges, train_covered = new_train_nodes, new_train_edges, new_train_covered
             test_nodes, test_edges, test_covered = new_test_nodes, new_test_edges, new_test_covered
@@ -270,7 +284,7 @@ def anneal_better_coverage():
     train_covered_set = {k for k,v in train_covered.most_common() if v>0}
     test_covered_set = {k for k,v in test_covered.most_common() if v>0}
     covered = list(train_covered_set.intersection(test_covered_set))
-    print(len(train_edges),len(test_edges),len(covered))
+    print(skipped, hits, len(train_edges),len(test_edges),len(covered))
     result = {"train":make_dataset(train_edges),"test":make_dataset(test_edges),"covered_notes":covered}
     with open(f"dataset/annealed.json","w") as f:
             json.dump(result,f)
