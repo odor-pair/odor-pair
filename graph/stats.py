@@ -16,6 +16,8 @@ full_data = {graph.utils.sort(d["mol1"],d["mol2"]):d for d in full_data}
 def get_note_frequencies(edges):
     edge_sum = []
     for edge in edges:
+        if not tuple(edge) in full_data:
+            continue
         data = full_data[tuple(edge)]
         edge_sum.append(graph.utils.multi_hot(data["blend_notes"],should_canonize=True))
     return torch.stack(edge_sum).sum(axis=0)
