@@ -232,9 +232,9 @@ def anneal_better_coverage():
     test_nodes, test_edges, test_covered = get_data(test_nodes)
 
     # lim = 1000000
-    lim = 100000
-    temperature = 20
-    decay = 0.99995
+    lim = 500000
+    temperature = 50
+    decay = 0.99999
     skipped = 0
     hits = 0
 
@@ -286,7 +286,7 @@ def anneal_better_coverage():
     covered = list(train_covered_set.intersection(test_covered_set))
     print(f"Skipped: {skipped}, Hits: {hits}, Train Edges: {len(train_edges)}, Test Edges: {len(test_edges)}, Covered: {len(covered)}")
     result = {"train":make_dataset(train_edges),"test":make_dataset(test_edges),"covered_notes":covered}
-    with open(f"dataset/annealed_{train_fraction*100}_{test_fraction*100}.json","w") as f:
+    with open(f"dataset/annealed_{int(train_fraction*100)}_{int(test_fraction*100)}.json","w") as f:
             json.dump(result,f)
 
 if __name__ == "__main__":
